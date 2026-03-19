@@ -1,51 +1,65 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { MacbookStatic } from "@/components/ui/macbook-scroll";
 import { CuttingMat } from "@/components/ui/cutting-mat";
 import { TerminalContent } from "@/components/terminal-content";
 
-const toolSlots = [
-  {
-    id: "screwdriver",
-    label: "Screwdriver",
-    className: "top-[4%] left-[3%] w-[12%] aspect-[16/11] -rotate-[15deg]",
-  },
-  {
-    id: "thermal-paste",
-    label: "Thermal Paste",
-    className: "top-[3%] right-[4%] w-[7%] aspect-[9/7] rotate-[10deg]",
-  },
-  {
-    id: "ram",
-    label: "RAM Stick",
-    className: "bottom-[20%] left-[2%] w-[10%] aspect-[14/5] -rotate-[5deg]",
-  },
-  {
-    id: "pcb",
-    label: "PCB",
-    className: "top-[12%] right-[2%] w-[13%] aspect-[18/14] rotate-[8deg]",
-  },
-  {
-    id: "multimeter",
-    label: "Multimeter",
-    className: "bottom-[10%] right-[3%] w-[9%] aspect-[12/14] -rotate-[12deg]",
-  },
-  {
-    id: "spudger",
-    label: "Spudger Tools",
-    className: "top-[50%] left-[1%] w-[8%] aspect-[10/7] rotate-[25deg]",
-  },
-  {
-    id: "coffee",
-    label: "Coffee",
-    className: "bottom-[5%] left-[5%] w-[6%] aspect-square rotate-[3deg]",
-  },
-  {
-    id: "cable",
-    label: "Cable Tester",
-    className: "bottom-[25%] right-[1%] w-[7%] aspect-[9/10] rotate-[20deg]",
-  },
+interface ToolItem {
+  id: string;
+  label: string;
+  img: string;
+  x: number;
+  y: number;
+  width: number;
+  rotation: number;
+  shadow: number;
+  skewX: number;
+  skewY: number;
+  /** How "tall" the object sits off the surface — affects shadow spread and DOF. 0 = flat, 1 = tallest */
+  elevation?: number;
+  /** Parallax speed multiplier. Higher = moves more on scroll. Default ~distance from center */
+  parallaxSpeed?: number;
+}
+
+const toolSlots: ToolItem[] = [
+  { id: "motherboard", label: "Motherboard", img: "/tools/motherboard.webp", x: 72.5, y: -10, width: 43, rotation: 6, shadow: 100, skewX: 0, skewY: 0, elevation: 0.15, parallaxSpeed: 0.15 },
+  { id: "multimeter", label: "Multimeter", img: "/tools/multimeter.webp", x: 1.4, y: 64.2, width: 21.9, rotation: -5, shadow: 100, skewX: 0, skewY: 0, elevation: 0.5, parallaxSpeed: 0.12 },
+  { id: "spudger", label: "Spudger Tools", img: "/tools/spudger.webp", x: 0.8, y: 43.2, width: 18, rotation: 0, shadow: 40, skewX: 0, skewY: 0, elevation: 0.05, parallaxSpeed: 0.08 },
+  { id: "screwdriver", label: "iFixit Screwdriver", img: "/tools/screwdriver.webp", x: 27.1, y: 60.4, width: 10.9, rotation: 20, shadow: 100, skewX: 0, skewY: 0, elevation: 0.3, parallaxSpeed: 0.1 },
+  { id: "nothing-phone", label: "Nothing Phone 2a", img: "/tools/nothing-phone.webp", x: 77.6, y: 66.7, width: 17.2, rotation: -8, shadow: 100, skewX: 0, skewY: 0, elevation: 0.2, parallaxSpeed: 0.13 },
+  { id: "thermal-paste", label: "Thermal Paste", img: "/tools/thermal-paste.webp", x: 72.6, y: 29.7, width: 11.7, rotation: 15, shadow: 100, skewX: 0, skewY: 0, elevation: 0.4, parallaxSpeed: 0.07 },
+  { id: "esp32", label: "ESP32", img: "/tools/esp32.webp", x: 23.9, y: 40.3, width: 5, rotation: -12, shadow: 40, skewX: 0, skewY: 0, elevation: 0.1, parallaxSpeed: 0.05 },
+  { id: "laptop-repair", label: "Laptop in Repair", img: "/tools/laptop-repair.webp", x: -3.4, y: -1, width: 36.2, rotation: -15, shadow: 51, skewX: 0, skewY: 0, elevation: 0.15, parallaxSpeed: 0.18 },
+  { id: "monster", label: "Monster Energy", img: "/tools/monster.webp", x: 63.8, y: 43.8, width: 18.2, rotation: 8, shadow: 100, skewX: 0, skewY: 0, elevation: 0.7, parallaxSpeed: 0.04 },
 ];
+
+/** Distance from viewport center (0–1), used for DOF blur */
+function distFromCenter(x: number, y: number, w: number): number {
+  const cx = x + w / 2;
+  const cy = y + (w * 0.6) / 2; // approximate center of item
+  const dx = (cx - 50) / 50;
+  const dy = (cy - 50) / 50;
+  return Math.min(1, Math.sqrt(dx * dx + dy * dy));
+}
+
+/** Build realistic shadow: tight contact shadow + softer ambient */
+function buildShadow(elevation: number, shadowIntensity: number): string {
+  if (shadowIntensity === 0) return "none";
+  const amt = shadowIntensity / 100;
+  // Contact shadow — tight, dark, barely offset
+  const contactY = 1 + elevation * 2;
+  const contactBlur = 2 + elevation * 4;
+  const contactOpacity = amt * 0.4 * (1 - elevation * 0.3);
+  // Ambient shadow — soft, spread out, offset further for taller objects
+  const ambientY = 4 + elevation * 12;
+  const ambientBlur = 10 + elevation * 20;
+  const ambientOpacity = amt * 0.25;
+  return [
+    `drop-shadow(0 ${contactY}px ${contactBlur}px rgba(0,0,0,${contactOpacity.toFixed(2)}))`,
+    `drop-shadow(0 ${ambientY}px ${ambientBlur}px rgba(0,0,0,${ambientOpacity.toFixed(2)}))`,
+  ].join(" ");
+}
 
 function TerminalCard() {
   return (
@@ -65,9 +79,60 @@ function TerminalCard() {
   );
 }
 
+function WorkbenchTool({ slot, scrollY }: { slot: ToolItem; scrollY: number }) {
+  const elevation = slot.elevation ?? 0.2;
+  const parallax = slot.parallaxSpeed ?? 0.04;
+  const dist = distFromCenter(slot.x, slot.y, slot.width);
+
+  // DOF blur: items far from center get slight blur
+  const dofBlur = dist > 0.6 ? (dist - 0.6) * 0.8 : 0;
+
+  // Parallax offset based on scroll
+  const yOffset = scrollY * parallax;
+
+  const shadow = buildShadow(elevation, slot.shadow);
+
+  return (
+    <div
+      className="absolute will-change-transform"
+      style={{
+        left: `${slot.x}%`,
+        top: `${slot.y}%`,
+        width: `${slot.width}%`,
+        transform: `translate3d(0, ${yOffset}px, 0) rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`,
+        filter: [shadow, dofBlur > 0 ? `blur(${dofBlur.toFixed(1)}px)` : ""].filter(Boolean).join(" "),
+      }}
+    >
+      <img
+        src={slot.img}
+        alt={slot.label}
+        className="h-full w-full object-contain"
+        draggable={false}
+      />
+    </div>
+  );
+}
+
 export function Hero() {
+  const [scrollY, setScrollY] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!sectionRef.current) return;
+      const rect = sectionRef.current.getBoundingClientRect();
+      // Only track scroll while hero is visible
+      if (rect.bottom > 0) {
+        setScrollY(-rect.top);
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <section
+      ref={sectionRef}
       id="about"
       className="relative flex h-svh w-full flex-col items-center justify-center overflow-hidden"
     >
@@ -118,6 +183,7 @@ export function Hero() {
       <div className="relative hidden h-full w-full md:flex md:flex-col md:items-center md:justify-center">
         {/* Workbench surface background */}
         <div className="absolute inset-0 bg-[#f5f5f0]">
+          {/* Subtle grid */}
           <div
             className="absolute inset-0 opacity-[0.06]"
             style={{
@@ -128,31 +194,27 @@ export function Hero() {
               backgroundSize: "40px 40px",
             }}
           />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,0,0,0.06)_100%)]" />
+          {/* Paper grain / noise texture */}
+          <svg className="absolute inset-0 h-full w-full opacity-[0.4]" xmlns="http://www.w3.org/2000/svg">
+            <filter id="noise">
+              <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+              <feColorMatrix type="saturate" values="0" />
+            </filter>
+            <rect width="100%" height="100%" filter="url(#noise)" />
+          </svg>
+          {/* Vignette */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.08)_100%)]" />
         </div>
 
-        {/* Tool photo placeholders */}
-        {toolSlots.map((slot) => (
-          <div key={slot.id} className={`absolute z-10 ${slot.className}`}>
-            <div className="flex h-full w-full items-center justify-center rounded-lg border-2 border-dashed border-black/10 bg-black/[0.03] p-2">
-              <span className="text-center font-mono text-[9px] text-black/20">
-                {slot.label}
-              </span>
-            </div>
+        {/* Workbench tools — 16:10 container matching the editor coordinate system */}
+        <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
+          <div className="relative h-full w-full" style={{ aspectRatio: "16/10", maxHeight: "100%", maxWidth: "100%" }}>
+            {toolSlots.map((slot) => (
+              <WorkbenchTool key={slot.id} slot={slot} scrollY={scrollY} />
+            ))}
           </div>
-        ))}
+        </div>
 
-        {/* Inventory sticker labels */}
-        <div className="absolute left-[4%] top-[65%] z-20 -rotate-[3deg] rounded-md border border-black/10 bg-white/90 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-accent">
-            Repair Tech
-          </span>
-        </div>
-        <div className="absolute right-[5%] top-[60%] z-20 rotate-[2deg] rounded-md border border-black/10 bg-white/90 px-3 py-1.5 shadow-sm backdrop-blur-sm">
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-accent">
-            AI-Native Dev
-          </span>
-        </div>
 
         {/* Center content */}
         <div className="relative z-20 flex flex-col items-center px-4">
@@ -173,7 +235,7 @@ export function Hero() {
             className="flex flex-col items-center"
             style={{ zoom: "var(--hero-zoom)" } as React.CSSProperties}
           >
-            <div className="grid place-items-center [&>*]:col-start-1 [&>*]:row-start-1">
+            <div className="relative grid place-items-center [&>*]:col-start-1 [&>*]:row-start-1">
               <CuttingMat
                 width={720}
                 height={620}

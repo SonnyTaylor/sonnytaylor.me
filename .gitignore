@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# screenshots
+screenshot.png
+hero-*.png
+
+# editor exports
+workbench-layout.json
+
+# package-lock (using bun)
+package-lock.json
