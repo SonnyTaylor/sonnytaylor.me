@@ -86,6 +86,21 @@
   --chart-5: #1a2e61;
 }
 
+/* Responsive zoom for the macbook+mat combo (desktop only) */
+:root {
+  --hero-zoom: 0.55;
+}
+@media (min-width: 1024px) {
+  :root {
+    --hero-zoom: 0.7;
+  }
+}
+@media (min-width: 1280px) {
+  :root {
+    --hero-zoom: 0.75;
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

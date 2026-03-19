@@ -17,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Sonny Taylor",
-  description: "I ship software with AI",
+  description: "I ship software with AI and repair stuff",
 };
 
 export default function RootLayout({

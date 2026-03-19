@@ -39,7 +39,7 @@ export const MacbookStatic = ({
   children?: React.ReactNode;
 }) => {
   return (
-    <div className="flex shrink-0 scale-[0.35] transform flex-col items-center py-0 [perspective:800px] sm:scale-50 md:scale-75">
+    <div className="flex shrink-0 transform flex-col items-center py-0 [perspective:800px]">
       {title && (
         <h2 className="mb-20 text-center text-3xl font-bold text-neutral-800 dark:text-white">
           {title}
