@@ -127,6 +127,9 @@ export function ProjectsTab() {
             "Server Infrastructure",
             "Git",
             "Shopify",
+            "Hardware Repair",
+            "IT Support",
+            "Networking",
           ].map((skill) => (
             <span
               key={skill}

@@ -11,6 +11,22 @@ const experience = [
     description:
       "Diagnose and repair PCs, laptops, and mobile devices. Handle customer interactions, manage inventory, and build internal tools. Developed the company's online store and internal portal from scratch using AI-augmented development.",
   },
+  {
+    title: "Trade Apprentice",
+    company: "The Door Taylor",
+    location: "Toorak, VIC",
+    date: "Jan 2024",
+    description:
+      "Flooring installation, demolition, and waste removal. Hands-on trade work requiring precision and physical problem-solving.",
+  },
+  {
+    title: "Junior IT Technician",
+    company: "Yeshivah - Beth Rivkah Colleges",
+    location: "St Kilda, VIC",
+    date: "Jan 2023",
+    description:
+      "Refurbished school computers by securely erasing data and reinstalling operating systems. Organised laptops and cables for charging stations across the school.",
+  },
 ];
 
 const education = [
@@ -63,19 +79,28 @@ export function ExperienceTab() {
 
       <div className="mt-16">
         <SectionDivider>Certifications</SectionDivider>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="mt-6 space-y-2"
-        >
-          <p className="font-mono text-sm text-foreground">
-            Google IT Support Professional Certificate
-          </p>
-          <p className="font-mono text-[11px] text-muted-foreground">
-            Coursera - 2024
-          </p>
-        </motion.div>
+        <div className="mt-6 space-y-5">
+          {[
+            { name: "Google IT Support Professional Certificate", issuer: "Coursera", date: "2024" },
+            { name: "Operating Systems Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+            { name: "Computer Hardware Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+            { name: "Introduction to Cybersecurity", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+            { name: "Python for Beginners", issuer: "Grok Learning", date: "Sep 2023" },
+          ].map((cert, i) => (
+            <motion.div
+              key={cert.name}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 + i * 0.05, duration: 0.4 }}
+              className="space-y-1"
+            >
+              <p className="font-mono text-sm text-foreground">{cert.name}</p>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {cert.issuer} · {cert.date}
+              </p>
+            </motion.div>
+          ))}
+        </div>
       </div>
     </div>
   );

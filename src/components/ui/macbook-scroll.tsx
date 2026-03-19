@@ -97,7 +97,7 @@ const Lid = ({
         {/* Screen content inside the lid bezel */}
         <div
           style={{ boxShadow: "0px 2px 0px 2px #171717 inset" }}
-          className="absolute inset-0 overflow-hidden rounded-lg bg-[#272729]"
+          className="absolute inset-2 overflow-hidden rounded-lg bg-[#272729]"
         >
           {children ? (
             children

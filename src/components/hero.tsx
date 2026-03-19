@@ -64,12 +64,20 @@ function buildShadow(elevation: number, shadowIntensity: number): string {
 function TerminalCard() {
   return (
     <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-[#0f1219] shadow-2xl shadow-black/40">
-      {/* Title bar */}
-      <div className="flex items-center gap-2 border-b border-white/5 px-4 py-2.5">
-        <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
-        <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
-        <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
-        <span className="ml-2 font-mono text-[10px] text-white/25">~/portfolio</span>
+      {/* Windows Terminal title bar */}
+      <div className="flex items-center border-b border-white/5 bg-[#1a1a2e]">
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b-2 border-[#da7758]">
+          <svg viewBox="0 0 16 16" className="h-3 w-3" fill="none">
+            <path d="M2 3.5L7.5 8L2 12.5" stroke="#da7758" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M8.5 12.5H14" stroke="#da7758" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <span className="font-mono text-[10px] text-white/50">Claude Code</span>
+        </div>
+        <div className="ml-auto flex">
+          <span className="px-3 py-1.5 text-[10px] text-white/20 hover:text-white/40">─</span>
+          <span className="px-3 py-1.5 text-[10px] text-white/20 hover:text-white/40">□</span>
+          <span className="px-3 py-1.5 text-[10px] text-white/20 hover:text-white/40">×</span>
+        </div>
       </div>
       {/* Terminal content */}
       <div className="px-4 py-3">
@@ -250,8 +258,25 @@ export function Hero() {
                 }}
               />
               <MacbookStatic showGradient={false}>
-                <div className="flex h-full w-full flex-col bg-[#0f1219] p-3">
-                  <TerminalContent compact={true} />
+                <div className="flex h-full w-full flex-col bg-[#0f1219]">
+                  {/* Windows Terminal title bar */}
+                  <div className="flex shrink-0 items-center border-b border-white/5 bg-[#1a1a2e]">
+                    <div className="flex items-center gap-1 px-2 py-0.5 border-b border-[#da7758]">
+                      <svg viewBox="0 0 16 16" className="h-1.5 w-1.5" fill="none">
+                        <path d="M2 3.5L7.5 8L2 12.5" stroke="#da7758" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8.5 12.5H14" stroke="#da7758" strokeWidth="2.5" strokeLinecap="round"/>
+                      </svg>
+                      <span className="font-mono text-[3px] text-white/50">Claude Code</span>
+                    </div>
+                    <div className="ml-auto flex">
+                      <span className="px-1 text-[3px] text-white/20">─</span>
+                      <span className="px-1 text-[3px] text-white/20">□</span>
+                      <span className="px-1 text-[3px] text-white/20">×</span>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-hidden p-2">
+                    <TerminalContent compact={true} />
+                  </div>
                 </div>
               </MacbookStatic>
             </div>

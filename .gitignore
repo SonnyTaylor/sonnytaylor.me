@@ -41,8 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 # screenshots
-screenshot.png
-hero-*.png
+*.png
+!public/**/*.png
 
 # editor exports
 workbench-layout.json
