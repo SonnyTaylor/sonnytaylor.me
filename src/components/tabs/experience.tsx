@@ -57,6 +57,15 @@ const education = [
     description:
       "Year 12. Subjects: Food Studies, Systems Engineering, English, General Maths, Psychology. Completed Applied Computing.",
   },
+  {
+    title: "Primary School",
+    company: "Beaumaris North Primary School",
+    location: "Beaumaris, VIC",
+    date: "2014 - 2019",
+    description:
+      "Mastered the Cool S. Learned to read and write (mostly). Undefeated at handball.",
+    handwritten: true,
+  },
 ];
 
 // ── Layout constants ──
@@ -522,10 +531,54 @@ export function ExperienceTab() {
       {/* ── Education ── */}
       <div className="mt-16">
         <SectionDivider>Education</SectionDivider>
-        <div className="mt-6 space-y-8">
+        <div className="relative mt-6 space-y-8">
+          {/* Pencil — left side, laid diagonally as if someone just put it down */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ delay: 0.4, duration: 0.6 }}
+            className="pointer-events-none absolute z-10 hidden md:block"
+            style={{
+              left: -240,
+              top: -30,
+              width: 220,
+              transform: "rotate(-30deg)",
+              filter: "drop-shadow(2px 3px 4px rgba(45,30,10,0.25)) drop-shadow(5px 8px 16px rgba(45,30,10,0.12))",
+            }}
+          >
+            <img src="/tools/pencil.webp" alt="" className="w-full" draggable={false} />
+          </motion.div>
+
+          {/* Cool S — right side, like a doodle on paper placed on the desk */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
+            whileInView={{ opacity: 1, scale: 1, rotate: 8 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+            className="pointer-events-none absolute z-10 hidden md:block"
+            style={{
+              right: -100,
+              top: "45%",
+              width: 40,
+              transform: "translateY(-50%) rotate(8deg)",
+              filter: "drop-shadow(1px 2px 3px rgba(45,30,10,0.2)) drop-shadow(3px 6px 12px rgba(45,30,10,0.1))",
+            }}
+          >
+            {/* Inline Cool S — pencil-graphite style */}
+            <svg viewBox=".5 .5 5 11" className="w-full" style={{ stroke: "#3a3a3a", strokeWidth: 0.35 }}>
+              <path id="cool-s-half" fill="none" d="M3 9V7L1 5V3L3 1 5 3V5L4 6" />
+              <use xlinkHref="#cool-s-half" transform="rotate(180 3 6)" />
+            </svg>
+          </motion.div>
+
           {education.map((edu, i) => (
             <motion.div key={edu.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}>
-              <ExperienceEntry {...edu} />
+              {"handwritten" in edu && edu.handwritten ? (
+                <HandwrittenEntry title={edu.title} company={edu.company} location={edu.location} date={edu.date} description={edu.description} />
+              ) : (
+                <ExperienceEntry {...edu} />
+              )}
             </motion.div>
           ))}
         </div>
@@ -574,6 +627,19 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function PageTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display text-5xl text-foreground [&>em]:italic [&>em]:text-muted-foreground">{children}</h2>;
+}
+
+function HandwrittenEntry({ title, company, location, date, description }: { title: string; company: string; location: string; date: string; description: string }) {
+  return (
+    <div className="font-handwriting" style={{ transform: "rotate(-0.5deg)" }}>
+      <div className="flex items-baseline justify-between gap-4">
+        <h3 className="text-[24px] text-foreground/80">{title}</h3>
+        <span className="shrink-0 text-[16px] text-muted-foreground/60">{date}</span>
+      </div>
+      <p className="mb-2 text-[16px] text-accent/60">{company} · {location}</p>
+      <p className="text-[16px] leading-[1.7] text-muted-foreground/60">{description}</p>
+    </div>
+  );
 }
 
 function SectionDivider({ children }: { children: React.ReactNode }) {
