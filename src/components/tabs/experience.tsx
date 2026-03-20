@@ -1,6 +1,5 @@
 "use client";
 
-import { useId } from "react";
 import { motion } from "motion/react";
 
 // ── Data ──
@@ -59,12 +58,11 @@ const education = [
   },
   {
     title: "Primary School",
-    company: "Beaumaris North Primary School",
-    location: "Beaumaris, VIC",
+    company: "Cheltenham East Primary School",
+    location: "Cheltenham, VIC",
     date: "2014 - 2019",
     description:
       "Mastered the Cool S. Learned to read and write (mostly). Undefeated at handball.",
-    handwritten: true,
   },
 ];
 
@@ -76,6 +74,11 @@ const LED_CX = 28;
 const CONTENT_LEFT = PCB_W + 22;
 const WIRE_ZONE = 80;
 const PCB_EXTENSION = 65;
+
+// ── LED image layout — pin positions measured from the source image ──
+const LED_W = 25;
+const LED_H = 48;
+const LED_LEFT = 16; // left edge on PCB so pins land on PAD_A / PAD_B
 
 // ── Power wires — organic curves with natural imperfections ──
 
@@ -251,35 +254,36 @@ function PCBStrip() {
 // ── Solder pads with SMD resistor ──
 
 function SolderPads({ index }: { index: number }) {
-  const padY = 34;
+  const padY = 50;
+  const resY = 2;
 
   return (
-    <svg width={PCB_W} height="56" viewBox={`0 0 ${PCB_W} 56`} className="block">
+    <svg width={PCB_W} height="72" viewBox={`0 0 ${PCB_W} 72`} className="block">
       {/* ── SMD Resistor (220Ω current limiter, in series on VCC → anode) ── */}
 
       {/* Solder mask opening around resistor pads */}
-      <rect x={PAD_A - 5.5} y="2" width="11" height="18" rx="1" fill="rgba(140,110,50,0.08)" />
+      <rect x={PAD_A - 5.5} y={resY} width="11" height="18" rx="1" fill="rgba(140,110,50,0.08)" />
 
       {/* Top copper pad (VCC input) */}
-      <rect x={PAD_A - 4.5} y="3" width="9" height="3.5" rx="0.5" fill="#c9a84a" />
-      <rect x={PAD_A - 4.5} y="3" width="9" height="3.5" rx="0.5" fill="#d0d0d0" opacity="0.15" />
+      <rect x={PAD_A - 4.5} y={resY + 1} width="9" height="3.5" rx="0.5" fill="#c9a84a" />
+      <rect x={PAD_A - 4.5} y={resY + 1} width="9" height="3.5" rx="0.5" fill="#d0d0d0" opacity="0.15" />
 
       {/* Resistor body */}
-      <rect x={PAD_A - 3.5} y="6.5" width="7" height="9" rx="0.8" fill="#1a1a1a" />
-      <text x={PAD_A} y="12.5" fill="white" fontSize="3.5" fontFamily="monospace" opacity="0.45" textAnchor="middle">221</text>
+      <rect x={PAD_A - 3.5} y={resY + 4.5} width="7" height="9" rx="0.8" fill="#1a1a1a" />
+      <text x={PAD_A} y={resY + 10.5} fill="white" fontSize="3.5" fontFamily="monospace" opacity="0.45" textAnchor="middle">221</text>
 
       {/* Bottom copper pad (output to LED anode) */}
-      <rect x={PAD_A - 4.5} y="15.5" width="9" height="3.5" rx="0.5" fill="#c9a84a" />
-      <rect x={PAD_A - 4.5} y="15.5" width="9" height="3.5" rx="0.5" fill="#d0d0d0" opacity="0.15" />
+      <rect x={PAD_A - 4.5} y={resY + 13.5} width="9" height="3.5" rx="0.5" fill="#c9a84a" />
+      <rect x={PAD_A - 4.5} y={resY + 13.5} width="9" height="3.5" rx="0.5" fill="#d0d0d0" opacity="0.15" />
 
       {/* Resistor silkscreen outline */}
-      <rect x={PAD_A - 5} y="2.5" width="10" height="17" rx="0.5" fill="none" stroke="white" strokeWidth="0.4" opacity="0.2" />
+      <rect x={PAD_A - 5} y={resY + 0.5} width="10" height="17" rx="0.5" fill="none" stroke="white" strokeWidth="0.4" opacity="0.2" />
 
       {/* Resistor designator */}
-      <text x={PAD_A + 8} y="13" fill="white" fontSize="3.5" fontFamily="monospace" opacity="0.3">R{index}</text>
+      <text x={PAD_A + 8} y={resY + 11} fill="white" fontSize="3.5" fontFamily="monospace" opacity="0.3">R{index}</text>
 
       {/* ── Trace from resistor output to LED anode ── */}
-      <rect x={PAD_A - 1.5} y="19" width="3" height="8" rx="0.5" fill="#8c6e32" opacity="0.30" />
+      <rect x={PAD_A - 1.5} y={resY + 17} width="3" height={padY - resY - 24} rx="0.5" fill="#8c6e32" opacity="0.30" />
 
       {/* ── LED Pads ── */}
 
@@ -320,17 +324,14 @@ function SolderPads({ index }: { index: number }) {
 // ── LED — semicircle dome on cylindrical body ──
 
 function LEDDome({ active }: { active: boolean }) {
-  const gradId = useId();
-  const cylId = `${gradId}-cyl`;
-
   return (
-    <div className="relative">
+    <div className="relative" style={{ width: LED_W, height: LED_H }}>
       {/* Outer glow — centered on dome */}
       {active && (
         <div
           className="absolute z-0 rounded-full animate-[led-pulse_2s_ease-in-out_infinite]"
           style={{
-            left: -14, right: -14, top: -14, height: 48,
+            left: -14, right: -14, top: -10, height: 48,
             background: "radial-gradient(circle, rgba(34,197,94,0.55) 0%, rgba(34,197,94,0.2) 40%, transparent 70%)",
           }}
         />
@@ -340,86 +341,27 @@ function LEDDome({ active }: { active: boolean }) {
         <div
           className="absolute z-0 rounded-full"
           style={{
-            left: -4, right: -4, top: -6, height: 28,
+            left: -4, right: -4, top: -4, height: 28,
             background: "radial-gradient(circle, rgba(74,222,128,0.6) 0%, rgba(34,197,94,0.15) 60%, transparent 100%)",
           }}
         />
       )}
 
-      <svg width="28" height="34" viewBox="0 0 28 34" className="relative z-10 block">
-        <defs>
-          <radialGradient id={gradId} cx="0.4" cy="0.3" r="0.65" fx="0.35" fy="0.25">
-            {active ? (
-              <>
-                <stop offset="0%" stopColor="white" />
-                <stop offset="8%" stopColor="#dcfce7" />
-                <stop offset="22%" stopColor="#86efac" />
-                <stop offset="40%" stopColor="#4ade80" />
-                <stop offset="62%" stopColor="#22c55e" />
-                <stop offset="80%" stopColor="#16a34a" />
-                <stop offset="100%" stopColor="#14532d" />
-              </>
-            ) : (
-              <>
-                <stop offset="0%" stopColor="#fef9c3" />
-                <stop offset="12%" stopColor="#fde047" />
-                <stop offset="30%" stopColor="#eab308" />
-                <stop offset="55%" stopColor="#a16207" />
-                <stop offset="78%" stopColor="#78350f" />
-                <stop offset="100%" stopColor="#451a03" stopOpacity="0.85" />
-              </>
-            )}
-          </radialGradient>
-          {/* Cylinder body gradient — horizontal, shows round cross-section */}
-          <linearGradient id={cylId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor={active ? "#0f4a25" : "#3d1a00"} />
-            <stop offset="18%" stopColor={active ? "#16a34a" : "#a16207"} />
-            <stop offset="42%" stopColor={active ? "#22c55e" : "#ca8a04"} />
-            <stop offset="58%" stopColor={active ? "#22c55e" : "#ca8a04"} />
-            <stop offset="82%" stopColor={active ? "#16a34a" : "#a16207"} />
-            <stop offset="100%" stopColor={active ? "#0f4a25" : "#3d1a00"} />
-          </linearGradient>
-        </defs>
-
-        {/* Shadow on PCB surface */}
-        <ellipse cx="14" cy="28" rx="12" ry="3.5" fill="rgba(0,0,0,0.15)" />
-
-        {/* ── Cylindrical body — prominent straight sides ── */}
-        <rect x="3" y="12" width="22" height="12" fill={`url(#${cylId})`} />
-        {/* Left edge shadow */}
-        <rect x="3" y="12" width="2" height="12" fill="rgba(0,0,0,0.08)" />
-        {/* Right edge shadow */}
-        <rect x="23" y="12" width="2" height="12" fill="rgba(0,0,0,0.05)" />
-
-        {/* ── Base rim / flange ── */}
-        <ellipse cx="14" cy="24" rx="12.5" ry="3.5" fill="#555" opacity="0.45" />
-        <ellipse cx="14" cy="23.5" rx="12" ry="3" fill="#777" opacity="0.3" />
-        <ellipse cx="14" cy="23" rx="11.5" ry="2.5" fill={active ? "#0f4a25" : "#3d1a00"} opacity="0.2" />
-
-        {/* ── Dome — semicircle (hemisphere) sitting on top of cylinder ── */}
-        <path
-          d="M3 12 A11 11 0 0 1 25 12 Z"
-          fill={`url(#${gradId})`}
-        />
-
-        {/* Junction line — dome meets cylinder */}
-        <line x1="3" y1="12" x2="25" y2="12" stroke={active ? "#14532d" : "#451a03"} strokeWidth="0.5" opacity="0.12" />
-
-        {/* Primary specular highlight on dome */}
-        <ellipse cx="10" cy="5" rx="4" ry="2.5" fill="white" opacity={active ? 0.55 : 0.25} />
-
-        {/* Secondary glint */}
-        <ellipse cx="17" cy="9" rx="1.5" ry="1" fill="white" opacity={active ? 0.15 : 0.08} />
-
-        {/* Dome edge arc highlight */}
-        <path d="M4 12 A10.5 10.5 0 0 1 24 12" fill="none" stroke="white" strokeWidth="0.5" opacity={active ? 0.1 : 0.04} />
-
-        {/* Cathode flat — right side of dome + cylinder */}
-        <line x1="24" y1="4" x2="24" y2="24" stroke={active ? "#14532d" : "#451a03"} strokeWidth="0.8" opacity="0.15" strokeLinecap="round" />
-
-        {/* Subtle cylinder specular — vertical sheen */}
-        <rect x="10" y="12" width="2" height="12" rx="1" fill="white" opacity="0.035" />
-      </svg>
+      {/* Real LED image — colorised with sepia → hue-rotate */}
+      <img
+        src="/tools/led-red.webp"
+        alt=""
+        draggable={false}
+        className="relative z-10 block"
+        style={{
+          width: LED_W,
+          height: LED_H,
+          objectFit: "contain",
+          filter: active
+            ? "sepia(1) hue-rotate(90deg) saturate(3) brightness(1.05) drop-shadow(0 0 3px rgba(34,197,94,0.4))"
+            : "sepia(1) hue-rotate(10deg) saturate(2) brightness(0.85)",
+        }}
+      />
     </div>
   );
 }
@@ -473,12 +415,12 @@ export function ExperienceTab() {
               className="relative"
             >
               {/* Solder pads + resistor on PCB */}
-              <div className="absolute z-20" style={{ left: -CONTENT_LEFT, top: -20 }}>
+              <div className="absolute z-20" style={{ left: -CONTENT_LEFT, top: 0 }}>
                 <SolderPads index={i + 1} />
               </div>
 
-              {/* LED — centered between pads, aligned with title */}
-              <div className="absolute z-30" style={{ left: -CONTENT_LEFT + LED_CX - 14, top: -10 }}>
+              {/* LED — pin-aligned to solder pads */}
+              <div className="absolute z-30" style={{ left: -CONTENT_LEFT + LED_LEFT, top: 4 }}>
                 <LEDDome active={!!exp.active} />
               </div>
 
@@ -488,7 +430,7 @@ export function ExperienceTab() {
                   className="pointer-events-none absolute z-[15] rounded-full animate-[led-surface-pulse_2s_ease-in-out_infinite]"
                   style={{
                     left: -CONTENT_LEFT + LED_CX - 20,
-                    top: -6,
+                    top: 14,
                     width: 40,
                     height: 40,
                     background: "radial-gradient(circle, rgba(34,197,94,0.12) 0%, transparent 70%)",
@@ -574,11 +516,7 @@ export function ExperienceTab() {
 
           {education.map((edu, i) => (
             <motion.div key={edu.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}>
-              {"handwritten" in edu && edu.handwritten ? (
-                <HandwrittenEntry title={edu.title} company={edu.company} location={edu.location} date={edu.date} description={edu.description} />
-              ) : (
-                <ExperienceEntry {...edu} />
-              )}
+              <ExperienceEntry {...edu} />
             </motion.div>
           ))}
         </div>
@@ -627,19 +565,6 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function PageTitle({ children }: { children: React.ReactNode }) {
   return <h2 className="font-display text-5xl text-foreground [&>em]:italic [&>em]:text-muted-foreground">{children}</h2>;
-}
-
-function HandwrittenEntry({ title, company, location, date, description }: { title: string; company: string; location: string; date: string; description: string }) {
-  return (
-    <div className="font-handwriting" style={{ transform: "rotate(-0.5deg)" }}>
-      <div className="flex items-baseline justify-between gap-4">
-        <h3 className="text-[24px] text-foreground/80">{title}</h3>
-        <span className="shrink-0 text-[16px] text-muted-foreground/60">{date}</span>
-      </div>
-      <p className="mb-2 text-[16px] text-accent/60">{company} · {location}</p>
-      <p className="text-[16px] leading-[1.7] text-muted-foreground/60">{description}</p>
-    </div>
-  );
 }
 
 function SectionDivider({ children }: { children: React.ReactNode }) {
