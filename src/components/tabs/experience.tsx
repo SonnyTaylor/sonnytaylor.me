@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "motion/react";
+import { useRef, useState } from "react";
 
 // ── Data ──
 
@@ -660,6 +661,595 @@ function MarginNote({ text, rotation = 0, align }: { text: string; rotation?: nu
   );
 }
 
+// ── Notebook paper — realistic A4 sheet with ruled lines, doodles, imperfections ──
+
+// Paper constants — doodle positions use % so they scale with the fluid A4 sheet
+
+function NotebookPaper() {
+  const lineCount = 26; // visible ruled lines
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30, rotate: -0.5 }}
+      whileInView={{ opacity: 1, y: 0, rotate: 1.2 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.7, ease: "easeOut" }}
+      className="relative mx-auto"
+      style={{
+        width: 650,
+        height: Math.round(650 / 1.414), // landscape A4 ratio
+        // Paper shadow — soft, layered, slightly offset like it's resting on the desk
+        filter: "drop-shadow(1px 2px 2px rgba(30,20,10,0.12)) drop-shadow(4px 6px 12px rgba(30,20,10,0.10)) drop-shadow(8px 14px 28px rgba(30,20,10,0.08))",
+      }}
+    >
+      {/* ── Paper base ── */}
+      <div
+        className="absolute inset-0 overflow-hidden"
+        style={{
+          background: "#f5f2e8",
+          borderRadius: "2px 3px 4px 2px",
+        }}
+      >
+        {/* ── Paper texture — fiber grain ── */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+            backgroundSize: "180px 180px",
+          }}
+        />
+
+        {/* ── Aged paper unevenness — subtle warm/cool patches ── */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: `
+              radial-gradient(ellipse at 15% 20%, rgba(210,180,120,0.06) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 70%, rgba(180,160,120,0.05) 0%, transparent 45%),
+              radial-gradient(ellipse at 50% 90%, rgba(200,170,110,0.04) 0%, transparent 40%)
+            `,
+          }}
+        />
+
+        {/* ── Ruled lines — viewBox-based so they scale with fluid paper ── */}
+        <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 500 707" preserveAspectRatio="none">
+          {Array.from({ length: lineCount }).map((_, i) => {
+            const y = 50 + i * 25.2;
+            const opacity = 0.22 + Math.sin(i * 1.7) * 0.04;
+            return (
+              <line
+                key={i}
+                x1="0" y1={y} x2="500" y2={y}
+                stroke="#7ba4cf"
+                strokeWidth="0.8"
+                opacity={opacity}
+              />
+            );
+          })}
+          {/* ── Red margin line ── */}
+          <line
+            x1="67" y1="0" x2="67" y2="707"
+            stroke="#d4686a"
+            strokeWidth="0.9"
+            opacity="0.35"
+          />
+          {/* Double margin */}
+          <line
+            x1="63" y1="0" x2="63" y2="707"
+            stroke="#d4686a"
+            strokeWidth="0.5"
+            opacity="0.2"
+          />
+        </svg>
+
+        {/* ── Hole punches — 3 holes in left margin ── */}
+        {[18, 50, 82].map((pct, i) => (
+          <div
+            key={`hole-${i}`}
+            className="pointer-events-none absolute"
+            style={{
+              left: "2.5%",
+              top: `${pct}%`,
+              width: 16,
+              height: 16,
+              marginTop: -8,
+              borderRadius: "50%",
+              background: "rgba(0,0,0,0.06)",
+              boxShadow: `
+                inset 0 1px 2px rgba(0,0,0,0.12),
+                inset 0 -1px 1px rgba(255,255,255,0.3),
+                0 0 0 0.5px rgba(0,0,0,0.08)
+              `,
+            }}
+          >
+            <div
+              className="absolute rounded-full"
+              style={{
+                inset: 2,
+                background: "radial-gradient(circle, #e8e4dc 0%, #d8d4cc 100%)",
+                boxShadow: "inset 0 1px 3px rgba(0,0,0,0.15)",
+              }}
+            />
+          </div>
+        ))}
+
+        {/* ── Fold crease — horizontal, across the middle ── */}
+        <div
+          className="pointer-events-none absolute left-0 right-0"
+          style={{
+            top: "50%",
+            height: 3,
+            background: "linear-gradient(180deg, rgba(0,0,0,0.03) 0%, rgba(0,0,0,0.06) 50%, rgba(255,255,255,0.04) 100%)",
+          }}
+        />
+        {/* Second subtle crease — paper was tri-folded */}
+        <div
+          className="pointer-events-none absolute left-0 right-0"
+          style={{
+            top: "33%",
+            height: 2,
+            background: "linear-gradient(180deg, rgba(0,0,0,0.015) 0%, rgba(0,0,0,0.035) 50%, rgba(255,255,255,0.02) 100%)",
+          }}
+        />
+
+        {/* ── Dog-ear — top right corner ── */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: 0,
+            right: 0,
+            width: 22,
+            height: 22,
+            background: "linear-gradient(225deg, #ebe7dd 0%, #e8e4da 45%, #f5f2e8 46%, #f5f2e8 100%)",
+            boxShadow: "inset 1px 1px 2px rgba(0,0,0,0.06)",
+            clipPath: "polygon(100% 0, 0 0, 100% 100%)",
+            borderRadius: "0 3px 0 0",
+          }}
+        />
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            top: 0, right: 14, width: 16, height: 16,
+            background: "linear-gradient(225deg, rgba(0,0,0,0.04) 0%, transparent 70%)",
+            transform: "rotate(-2deg)",
+          }}
+        />
+
+        {/* ════════════════════════════════════════════
+            ── Text content — top portion of the page ──
+            ════════════════════════════════════════════ */}
+
+        <div
+          className="absolute"
+          style={{
+            left: "16%",
+            top: "7%",
+            right: "5%",
+          }}
+        >
+          {/* Page header — handwritten title */}
+          <div className="relative mb-5">
+            <span
+              className="font-handwriting text-[28px] leading-none"
+              style={{ color: "#2a2520" }}
+            >
+              Education
+            </span>
+            <svg className="mt-0.5 block" width="120" height="6" viewBox="0 0 120 6">
+              <path
+                d="M2 4 C20 3, 35 5, 55 3.5 C75 2, 95 4.5, 118 3"
+                fill="none"
+                stroke="#2a2520"
+                strokeWidth="1.2"
+                opacity="0.5"
+                strokeLinecap="round"
+              />
+            </svg>
+          </div>
+
+          {/* School entries */}
+          {education.map((edu, i) => (
+            <div key={edu.title} className="relative mb-6">
+              <h3 className="font-handwriting text-[22px] leading-tight" style={{ color: "#1a1815" }}>
+                {edu.company}
+              </h3>
+              <p className="mt-0.5 font-handwriting text-[17px]" style={{ color: "#4a4540" }}>
+                {edu.title} · {edu.location}
+              </p>
+              <p className="mt-0.5 font-handwriting text-[14px]" style={{ color: "#7a756e" }}>
+                {edu.date}
+              </p>
+              <p className="mt-2 font-handwriting text-[16px] leading-[1.8]" style={{ color: "#3a3530" }}>
+                {edu.description}
+              </p>
+              {i < education.length - 1 && (
+                <svg className="mt-4 block" width="200" height="4" viewBox="0 0 200 4">
+                  <path
+                    d="M0 2 C30 1.5, 50 3, 80 2 C110 1, 140 3, 200 2"
+                    fill="none"
+                    stroke="#2a2520"
+                    strokeWidth="0.6"
+                    opacity="0.15"
+                    strokeLinecap="round"
+                    strokeDasharray="6 4"
+                  />
+                </svg>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* ════════════════════════════════════════════════════════
+            ── Doodles — bottom half & margins, away from text ──
+            ════════════════════════════════════════════════════════ */}
+
+        {/* Cool S — bottom right area */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ right: "7%", bottom: "14%", width: 36, transform: "rotate(5deg)" }}
+        >
+          <svg viewBox=".5 .5 5 11" className="w-full" style={{ stroke: "#3a3530", strokeWidth: 0.35, fill: "none" }}>
+            <path id="cool-s-paper" d="M3 9V7L1 5V3L3 1 5 3V5L4 6" />
+            <use xlinkHref="#cool-s-paper" transform="rotate(180 3 6)" />
+          </svg>
+        </div>
+
+        {/* Star doodle — bottom centre-right */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ right: "25%", bottom: "10%", width: 20, transform: "rotate(-8deg)" }}
+        >
+          <svg viewBox="0 0 24 24" className="w-full">
+            <path
+              d="M12 2 L14.5 8.5 L21.5 9 L16 14 L17.5 21 L12 17.5 L6.5 21 L8 14 L2.5 9 L9.5 8.5 Z"
+              fill="none"
+              stroke="#3a3530"
+              strokeWidth="0.7"
+              opacity="0.3"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* Tic-tac-toe — bottom right corner */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ right: "5%", bottom: "3%", width: 55, transform: "rotate(3deg)" }}
+        >
+          <svg viewBox="0 0 50 50" className="w-full" style={{ opacity: 0.2 }}>
+            <line x1="17" y1="4" x2="17" y2="46" stroke="#3a3530" strokeWidth="1" strokeLinecap="round" />
+            <line x1="33" y1="4" x2="33" y2="46" stroke="#3a3530" strokeWidth="1" strokeLinecap="round" />
+            <line x1="4" y1="17" x2="46" y2="17" stroke="#3a3530" strokeWidth="1" strokeLinecap="round" />
+            <line x1="4" y1="33" x2="46" y2="33" stroke="#3a3530" strokeWidth="1" strokeLinecap="round" />
+            <g stroke="#3a3530" strokeWidth="1.2" strokeLinecap="round">
+              <line x1="6" y1="6" x2="14" y2="14" />
+              <line x1="14" y1="6" x2="6" y2="14" />
+              <line x1="22" y1="22" x2="28" y2="28" />
+              <line x1="28" y1="22" x2="22" y2="28" />
+            </g>
+            <circle cx="25" cy="10" r="5" fill="none" stroke="#3a3530" strokeWidth="1.2" />
+            <circle cx="10" cy="25" r="5" fill="none" stroke="#3a3530" strokeWidth="1.2" />
+          </svg>
+        </div>
+
+        {/* Spiral/spring — left margin, bottom half */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ left: "1.5%", bottom: "20%", width: 28, transform: "rotate(-5deg)" }}
+        >
+          <svg viewBox="0 0 30 40" className="w-full" style={{ opacity: 0.18 }}>
+            <path
+              d="M15 38 C15 38, 8 34, 8 30 C8 26, 22 26, 22 22 C22 18, 8 18, 8 14 C8 10, 22 10, 22 6 C22 3, 15 2, 15 2"
+              fill="none"
+              stroke="#3a3530"
+              strokeWidth="1"
+              strokeLinecap="round"
+            />
+          </svg>
+        </div>
+
+        {/* Arrow — bottom centre, pointing at nothing */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ left: "22%", bottom: "8%", width: 45, transform: "rotate(8deg)" }}
+        >
+          <svg viewBox="0 0 40 12" className="w-full" style={{ opacity: 0.16 }}>
+            <path
+              d="M2 6 L32 6 M28 2 L34 6 L28 10"
+              fill="none"
+              stroke="#3a3530"
+              strokeWidth="1"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* 3D cube — left margin, lower area */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ left: "2%", bottom: "7%", width: 24, transform: "rotate(-2deg)" }}
+        >
+          <svg viewBox="0 0 24 24" className="w-full" style={{ opacity: 0.16 }}>
+            <rect x="4" y="8" width="12" height="12" fill="none" stroke="#3a3530" strokeWidth="0.8" />
+            <path d="M4 8 L10 3 L22 3 L16 8" fill="none" stroke="#3a3530" strokeWidth="0.8" />
+            <path d="M16 8 L22 3 L22 15 L16 20" fill="none" stroke="#3a3530" strokeWidth="0.8" />
+          </svg>
+        </div>
+
+        {/* "bored in class" — vertical in left margin, lower half */}
+        <span
+          className="pointer-events-none absolute font-handwriting"
+          style={{
+            left: "1%",
+            bottom: "32%",
+            fontSize: 9,
+            color: "#3a3530",
+            opacity: 0.18,
+            transform: "rotate(-90deg)",
+            transformOrigin: "left bottom",
+            whiteSpace: "nowrap",
+          }}
+        >
+          bored in class →
+        </span>
+
+        {/* Smiley face — bottom centre-left */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ left: "40%", bottom: "4%", width: 18, transform: "rotate(6deg)" }}
+        >
+          <svg viewBox="0 0 20 20" className="w-full" style={{ opacity: 0.18 }}>
+            <circle cx="10" cy="10" r="8" fill="none" stroke="#3a3530" strokeWidth="0.9" />
+            <circle cx="7" cy="8" r="1" fill="#3a3530" />
+            <circle cx="13" cy="8" r="1" fill="#3a3530" />
+            <path d="M6 13 C8 15, 12 15, 14 13" fill="none" stroke="#3a3530" strokeWidth="0.8" strokeLinecap="round" />
+          </svg>
+        </div>
+
+        {/* Zigzag scribble — bottom left, bored doodling */}
+        <div
+          className="pointer-events-none absolute"
+          style={{ left: "18%", bottom: "15%", width: 60, transform: "rotate(-1deg)" }}
+        >
+          <svg viewBox="0 0 60 14" className="w-full" style={{ opacity: 0.12 }}>
+            <path
+              d="M2 10 L8 4 L14 10 L20 4 L26 10 L32 4 L38 10 L44 4 L50 10 L56 4"
+              fill="none"
+              stroke="#3a3530"
+              strokeWidth="0.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* Page number — bottom right */}
+        <span
+          className="pointer-events-none absolute font-handwriting"
+          style={{ right: "4%", bottom: "1.5%", fontSize: 13, color: "#3a3530", opacity: 0.25 }}
+        >
+          1
+        </span>
+
+        {/* Coffee ring stain — bottom half */}
+        <div
+          className="pointer-events-none absolute"
+          style={{
+            left: "50%",
+            bottom: "18%",
+            width: 65,
+            height: 65,
+            borderRadius: "50%",
+            border: "2px solid rgba(140,100,50,0.06)",
+            background: "radial-gradient(circle, rgba(140,100,50,0.02) 0%, transparent 70%)",
+            transform: "rotate(-15deg)",
+          }}
+        />
+
+        {/* Edge wear — slight darkening along edges */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            boxShadow: "inset 0 0 20px rgba(0,0,0,0.03), inset 0 0 4px rgba(0,0,0,0.02)",
+            borderRadius: "2px 3px 4px 2px",
+          }}
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Corkboard with draggable certificate cards ──
+
+const certifications = [
+  { name: "Google IT Support Professional Certificate", issuer: "Coursera", date: "2024" },
+  { name: "Operating Systems Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+  { name: "Computer Hardware Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+  { name: "Introduction to Cybersecurity", issuer: "Cisco Networking Academy", date: "Oct 2023" },
+  { name: "Python for Beginners", issuer: "Grok Learning", date: "Sep 2023" },
+];
+
+const CARD_POSITIONS = [
+  { x: 20,  y: 20,  rotation: -3,   pinColor: "#e53935" },
+  { x: 200, y: 30,  rotation: 2,    pinColor: "#1e88e5" },
+  { x: 390, y: 15,  rotation: -1.5, pinColor: "#43a047" },
+  { x: 70,  y: 165, rotation: 2.5,  pinColor: "#ffb300" },
+  { x: 300, y: 160, rotation: -2,   pinColor: "#8e24aa" },
+];
+
+function Pushpin({ color }: { color: string }) {
+  return (
+    <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -6 }}>
+      <svg width="16" height="20" viewBox="0 0 16 20">
+        {/* Shaft shadow */}
+        <line x1="8" y1="12" x2="8" y2="20" stroke="rgba(0,0,0,0.15)" strokeWidth="2" />
+        {/* Shaft */}
+        <line x1="8" y1="12" x2="8" y2="19" stroke="#999" strokeWidth="1.2" />
+        {/* Head shadow */}
+        <circle cx="8.5" cy="8" r="6" fill="rgba(0,0,0,0.12)" />
+        {/* Head body */}
+        <circle cx="8" cy="7.5" r="6" fill={color} />
+        {/* Gloss highlight */}
+        <ellipse cx="6" cy="5.5" rx="2.5" ry="2" fill="rgba(255,255,255,0.4)" />
+      </svg>
+    </div>
+  );
+}
+
+function CertCard({
+  cert,
+  position,
+  constraintsRef,
+  isDragging,
+  onDragStart,
+  onDragEnd,
+}: {
+  cert: { name: string; issuer: string; date: string };
+  position: (typeof CARD_POSITIONS)[number];
+  constraintsRef: React.RefObject<HTMLDivElement | null>;
+  isDragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  return (
+    <motion.div
+      drag
+      dragConstraints={constraintsRef}
+      dragMomentum={false}
+      dragElastic={0.1}
+      whileDrag={{ scale: 1.08 }}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className="absolute cursor-grab select-none active:cursor-grabbing"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: 170,
+        rotate: position.rotation,
+        zIndex: isDragging ? 50 : 10,
+        filter: isDragging
+          ? "drop-shadow(4px 8px 16px rgba(0,0,0,0.3))"
+          : "drop-shadow(1px 2px 4px rgba(0,0,0,0.18))",
+        transition: isDragging ? "filter 0.15s" : "filter 0.3s, z-index 0s 0.3s",
+      }}
+    >
+      {/* Card paper */}
+      <div
+        className="relative rounded-sm px-3 pb-3 pt-6"
+        style={{
+          background: "linear-gradient(170deg, #fffef7 0%, #faf6eb 100%)",
+          boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)",
+        }}
+      >
+        {/* Paper texture */}
+        <div
+          className="pointer-events-none absolute inset-0 rounded-sm"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`,
+            backgroundSize: "120px 120px",
+          }}
+        />
+        <Pushpin color={position.pinColor} />
+        <p className="relative font-mono text-[10px] font-semibold leading-snug" style={{ color: "#1a1815" }}>
+          {cert.name}
+        </p>
+        <p className="relative mt-1.5 font-mono text-[9px]" style={{ color: "#7a756e" }}>
+          {cert.issuer} · {cert.date}
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+function Corkboard() {
+  const constraintsRef = useRef<HTMLDivElement>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-60px" }}
+      transition={{ duration: 0.6 }}
+      ref={constraintsRef}
+      className="relative mx-auto overflow-hidden"
+      style={{
+        width: 620,
+        height: 310,
+        borderRadius: 4,
+        // Wood frame — layered inset shadows for bevel
+        boxShadow: `
+          inset 0 0 0 6px #a07830,
+          inset 0 0 0 8px #7a5a20,
+          inset 0 0 0 9px rgba(0,0,0,0.25),
+          2px 4px 12px rgba(0,0,0,0.2),
+          4px 8px 24px rgba(0,0,0,0.1)
+        `,
+      }}
+    >
+      {/* Cork base colour */}
+      <div className="absolute inset-0" style={{ background: "#c4956a" }} />
+
+      {/* Cork grain — noise texture */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='0.12'/%3E%3C/svg%3E")`,
+          backgroundSize: "200px 200px",
+        }}
+      />
+
+      {/* Warm colour variation — patches */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `
+            radial-gradient(ellipse at 20% 30%, rgba(180,120,60,0.25) 0%, transparent 50%),
+            radial-gradient(ellipse at 75% 55%, rgba(160,100,50,0.18) 0%, transparent 45%),
+            radial-gradient(ellipse at 45% 80%, rgba(190,130,70,0.12) 0%, transparent 40%)
+          `,
+        }}
+      />
+
+      {/* Fine cork pores — dot pattern */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `
+            radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px),
+            radial-gradient(circle, rgba(0,0,0,0.04) 0.8px, transparent 0.8px)
+          `,
+          backgroundSize: "7px 7px, 11px 11px",
+          backgroundPosition: "0 0, 4px 4px",
+        }}
+      />
+
+      {/* Inner frame shadow — depth around edges */}
+      <div
+        className="pointer-events-none absolute inset-[9px]"
+        style={{
+          boxShadow: "inset 2px 2px 6px rgba(0,0,0,0.12), inset -1px -1px 4px rgba(0,0,0,0.06)",
+          borderRadius: 2,
+        }}
+      />
+
+      {/* Certificate cards */}
+      {certifications.map((cert, i) => (
+        <CertCard
+          key={cert.name}
+          cert={cert}
+          position={CARD_POSITIONS[i]}
+          constraintsRef={constraintsRef}
+          isDragging={draggedIndex === i}
+          onDragStart={() => setDraggedIndex(i)}
+          onDragEnd={() => setDraggedIndex(null)}
+        />
+      ))}
+    </motion.div>
+  );
+}
+
 // ── Main component ──
 
 export function ExperienceTab() {
@@ -756,71 +1346,47 @@ export function ExperienceTab() {
       {/* ── Education ── */}
       <div className="mt-16">
         <SectionDivider>Education</SectionDivider>
-        <div className="relative mt-6 space-y-8">
-          {/* Pencil — left side, laid diagonally as if someone just put it down */}
+        <div className="relative mt-6 flex items-start justify-center">
+          {/* Pencil — beside the paper, laid diagonally as if just set down */}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true, margin: "-80px" }}
             transition={{ delay: 0.4, duration: 0.6 }}
-            className="pointer-events-none absolute z-10 hidden md:block"
+            className="pointer-events-none absolute z-20 hidden md:block"
             style={{
-              left: -240,
-              top: -30,
-              width: 220,
-              transform: "rotate(-30deg)",
+              left: -180,
+              top: 50,
+              width: 322, // 170mm sharpened pencil, 57% of 297mm landscape A4, pencil fills 1.157x of CSS width
+              transform: "rotate(-55deg)",
+              transformOrigin: "center center",
               filter: "drop-shadow(2px 3px 4px rgba(45,30,10,0.25)) drop-shadow(5px 8px 16px rgba(45,30,10,0.12))",
             }}
           >
             <img src="/tools/pencil.webp" alt="" className="w-full" draggable={false} />
           </motion.div>
 
-          {/* Cool S — right side, like a doodle on paper placed on the desk */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8, rotate: 8 }}
-            whileInView={{ opacity: 1, scale: 1, rotate: 8 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ delay: 0.5, duration: 0.5 }}
-            className="pointer-events-none absolute z-10 hidden md:block"
-            style={{
-              right: -100,
-              top: "45%",
-              width: 40,
-              transform: "translateY(-50%) rotate(8deg)",
-              filter: "drop-shadow(1px 2px 3px rgba(45,30,10,0.2)) drop-shadow(3px 6px 12px rgba(45,30,10,0.1))",
-            }}
-          >
-            {/* Inline Cool S — pencil-graphite style */}
-            <svg viewBox=".5 .5 5 11" className="w-full" style={{ stroke: "#3a3a3a", strokeWidth: 0.35 }}>
-              <path id="cool-s-half" fill="none" d="M3 9V7L1 5V3L3 1 5 3V5L4 6" />
-              <use xlinkHref="#cool-s-half" transform="rotate(180 3 6)" />
-            </svg>
-          </motion.div>
-
-          {education.map((edu, i) => (
-            <motion.div key={edu.title} initial={{ opacity: 0, y: 24 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-80px" }} transition={{ delay: 0.1 + i * 0.1, duration: 0.5 }}>
-              <ExperienceEntry {...edu} />
-            </motion.div>
-          ))}
+          <NotebookPaper />
         </div>
       </div>
 
       {/* ── Certifications ── */}
       <div className="mt-16">
         <SectionDivider>Certifications</SectionDivider>
-        <div className="mt-6 space-y-5">
-          {[
-            { name: "Google IT Support Professional Certificate", issuer: "Coursera", date: "2024" },
-            { name: "Operating Systems Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-            { name: "Computer Hardware Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-            { name: "Introduction to Cybersecurity", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-            { name: "Python for Beginners", issuer: "Grok Learning", date: "Sep 2023" },
-          ].map((cert, i) => (
+
+        {/* Mobile — simple list */}
+        <div className="mt-6 space-y-4 md:hidden">
+          {certifications.map((cert, i) => (
             <motion.div key={cert.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ delay: 0.05 + i * 0.05, duration: 0.4 }} className="space-y-1">
               <p className="font-mono text-sm text-foreground">{cert.name}</p>
               <p className="font-mono text-[11px] text-muted-foreground">{cert.issuer} · {cert.date}</p>
             </motion.div>
           ))}
+        </div>
+
+        {/* Desktop — corkboard */}
+        <div className="mt-6 hidden md:block">
+          <Corkboard />
         </div>
       </div>
     </div>
