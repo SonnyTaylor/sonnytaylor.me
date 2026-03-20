@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { MacbookStatic } from "@/components/ui/macbook-scroll";
 import { CuttingMat } from "@/components/ui/cutting-mat";
 import { TerminalContent } from "@/components/terminal-content";
@@ -43,21 +43,46 @@ function distFromCenter(x: number, y: number, w: number): number {
   return Math.min(1, Math.sqrt(dx * dx + dy * dy));
 }
 
-/** Build realistic shadow: tight contact shadow + softer ambient */
-function buildShadow(elevation: number, shadowIntensity: number): string {
-  if (shadowIntensity === 0) return "none";
-  const amt = shadowIntensity / 100;
-  // Contact shadow — tight, dark, barely offset
-  const contactY = 1 + elevation * 2;
-  const contactBlur = 2 + elevation * 4;
-  const contactOpacity = amt * 0.4 * (1 - elevation * 0.3);
-  // Ambient shadow — soft, spread out, offset further for taller objects
-  const ambientY = 4 + elevation * 12;
-  const ambientBlur = 10 + elevation * 20;
-  const ambientOpacity = amt * 0.25;
+// ── Directional light source — simulates an overhead desk lamp ──
+const LIGHT = { x: 22, y: -8 }; // top-left, slightly above the scene
+
+/** Build directional shadow cast away from the light source.
+ *  Static per-object (no scroll dependency) so filter never changes → GPU-friendly. */
+function buildDirectionalShadow(
+  objX: number, objY: number, objW: number,
+  elevation: number, intensity: number,
+): string {
+  if (intensity === 0) return "none";
+  const amt = intensity / 100;
+
+  // Object centre (% coords)
+  const cx = objX + objW / 2;
+  const cy = objY + (objW * 0.6) / 2;
+
+  // Vector from light → object (not normalised — further objects cast longer shadows)
+  const rawDx = (cx - LIGHT.x) * 0.08;
+  const rawDy = (cy - LIGHT.y) * 0.08;
+  const h = elevation;
+
+  // Warm brown tint
+  const warm = "45,30,10";
+
+  // Contact shadow — tight, grounds the object to the surface
+  const cOffX = rawDx * (0.4 + h * 0.8);
+  const cOffY = rawDy * (0.4 + h * 0.8) + 1;
+  const cBlur  = 2 + h * 4;
+  const cAlpha = amt * 0.5 * Math.max(0.35, 1 - h * 0.3);
+
+  // Cast shadow — softer, offset in light direction
+  const castMul = 1.2 + h * 3;
+  const sOffX = rawDx * castMul;
+  const sOffY = rawDy * castMul + 2;
+  const sBlur  = 8 + h * 18;
+  const sAlpha = amt * 0.2;
+
   return [
-    `drop-shadow(0 ${contactY}px ${contactBlur}px rgba(0,0,0,${contactOpacity.toFixed(2)}))`,
-    `drop-shadow(0 ${ambientY}px ${ambientBlur}px rgba(0,0,0,${ambientOpacity.toFixed(2)}))`,
+    `drop-shadow(${cOffX.toFixed(1)}px ${cOffY.toFixed(1)}px ${cBlur.toFixed(1)}px rgba(${warm},${cAlpha.toFixed(2)}))`,
+    `drop-shadow(${sOffX.toFixed(1)}px ${sOffY.toFixed(1)}px ${sBlur.toFixed(1)}px rgba(${warm},${sAlpha.toFixed(2)}))`,
   ].join(" ");
 }
 
@@ -87,18 +112,19 @@ function TerminalCard() {
   );
 }
 
-function WorkbenchTool({ slot, scrollY }: { slot: ToolItem; scrollY: number }) {
+/** Pre-compute the static filter string for each tool (shadow + DOF).
+ *  This never changes, so the browser can cache the composited layer. */
+function useStaticFilter(slot: ToolItem): string {
   const elevation = slot.elevation ?? 0.2;
-  const parallax = slot.parallaxSpeed ?? 0.04;
   const dist = distFromCenter(slot.x, slot.y, slot.width);
-
-  // DOF blur: items far from center get slight blur
   const dofBlur = dist > 0.6 ? (dist - 0.6) * 0.8 : 0;
+  const shadow = buildDirectionalShadow(slot.x, slot.y, slot.width, elevation, slot.shadow);
+  return [shadow, dofBlur > 0 ? `blur(${dofBlur.toFixed(1)}px)` : ""].filter(Boolean).join(" ");
+}
 
-  // Parallax offset based on scroll
-  const yOffset = scrollY * parallax;
-
-  const shadow = buildShadow(elevation, slot.shadow);
+function WorkbenchTool({ slot }: { slot: ToolItem }) {
+  // Filter is static — only transform changes on scroll (via direct DOM update in Hero)
+  const filter = useStaticFilter(slot);
 
   return (
     <div
@@ -107,8 +133,8 @@ function WorkbenchTool({ slot, scrollY }: { slot: ToolItem; scrollY: number }) {
         left: `${slot.x}%`,
         top: `${slot.y}%`,
         width: `${slot.width}%`,
-        transform: `translate3d(0, ${yOffset}px, 0) rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`,
-        filter: [shadow, dofBlur > 0 ? `blur(${dofBlur.toFixed(1)}px)` : ""].filter(Boolean).join(" "),
+        transform: `rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`,
+        filter,
       }}
     >
       <img
@@ -122,20 +148,35 @@ function WorkbenchTool({ slot, scrollY }: { slot: ToolItem; scrollY: number }) {
 }
 
 export function Hero() {
-  const [scrollY, setScrollY] = useState(0);
   const sectionRef = useRef<HTMLElement>(null);
+  const toolsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (!sectionRef.current) return;
+    let rafId = 0;
+    const update = () => {
+      if (!sectionRef.current || !toolsRef.current) return;
       const rect = sectionRef.current.getBoundingClientRect();
-      // Only track scroll while hero is visible
-      if (rect.bottom > 0) {
-        setScrollY(-rect.top);
+      if (rect.bottom <= 0) return;
+      const scrollY = -rect.top;
+      // Update each tool's transform directly — no React re-render
+      const children = toolsRef.current.children;
+      for (let i = 0; i < toolSlots.length && i < children.length; i++) {
+        const el = children[i] as HTMLElement;
+        const slot = toolSlots[i];
+        const parallax = slot.parallaxSpeed ?? 0.04;
+        const yOffset = scrollY * parallax;
+        el.style.transform = `translate3d(0, ${yOffset}px, 0) rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`;
       }
     };
+    const handleScroll = () => {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(update);
+    };
     window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      cancelAnimationFrame(rafId);
+    };
   }, []);
 
   return (
@@ -210,15 +251,178 @@ export function Hero() {
             </filter>
             <rect width="100%" height="100%" filter="url(#noise)" />
           </svg>
-          {/* Vignette */}
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_30%,rgba(0,0,0,0.08)_100%)]" />
+          {/* Desk lamp warm light pool — brighter near the light source */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 75% 70% at 20% 10%, rgba(255,240,215,0.30) 0%, rgba(255,235,200,0.12) 35%, transparent 60%)`,
+            }}
+          />
+          {/* Secondary fill light — very subtle from bottom-right */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 40% 35% at 85% 90%, rgba(200,210,225,0.06) 0%, transparent 50%)`,
+            }}
+          />
+          {/* Warm edge highlight along the top — light hitting desk edge */}
+          <div
+            className="absolute inset-x-0 top-0 h-[2px]"
+            style={{ background: "linear-gradient(90deg, transparent 3%, rgba(255,235,200,0.35) 20%, rgba(255,240,210,0.15) 55%, transparent 80%)" }}
+          />
+          {/* Vignette — strongly asymmetric (darker far from lamp) */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: `radial-gradient(ellipse 80% 75% at 30% 35%, transparent 25%, rgba(0,0,0,0.06) 55%, rgba(0,0,0,0.14) 85%, rgba(0,0,0,0.20) 100%)`,
+            }}
+          />
+          {/* ── Surface imperfections ── */}
+
+          {/* Coffee ring stain — fresh, mug-sized (~85mm), slightly oval */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "5%",
+              top: "62%",
+              width: "180px",
+              height: "170px",
+              borderRadius: "50%",
+              transform: "rotate(-8deg)",
+              background: "radial-gradient(ellipse at center, transparent 39%, rgba(100,65,25,0.07) 43%, rgba(100,65,25,0.12) 46%, rgba(100,65,25,0.14) 48%, rgba(100,65,25,0.08) 51%, rgba(100,65,25,0.03) 54%, transparent 58%)",
+            }}
+          />
+          {/* Coffee ring — older, fainter, overlapping the first */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "76%",
+              top: "70%",
+              width: "165px",
+              height: "155px",
+              borderRadius: "50%",
+              transform: "rotate(12deg)",
+              background: "radial-gradient(ellipse at center, transparent 37%, rgba(100,65,25,0.05) 42%, rgba(100,65,25,0.09) 46%, rgba(100,65,25,0.06) 50%, transparent 56%)",
+            }}
+          />
+          {/* Drip trail from a mug being moved */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "13%",
+              top: "66%",
+              width: "80px",
+              height: "12px",
+              borderRadius: "6px",
+              transform: "rotate(-18deg)",
+              background: "radial-gradient(ellipse at 20% 50%, rgba(100,65,25,0.08) 0%, rgba(100,65,25,0.04) 50%, transparent 80%)",
+            }}
+          />
+
+          {/* Scuff / discoloration patches — where hands rest or things get dragged */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "38%",
+              top: "80%",
+              width: "280px",
+              height: "120px",
+              borderRadius: "40%",
+              background: "radial-gradient(ellipse at center, rgba(170,150,110,0.07) 0%, rgba(170,150,110,0.03) 50%, transparent 75%)",
+            }}
+          />
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "15%",
+              top: "30%",
+              width: "160px",
+              height: "90px",
+              borderRadius: "50%",
+              background: "radial-gradient(ellipse at center, rgba(170,150,110,0.05) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* Thermal paste smudge — grey smear near the thermal paste tube */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "80%",
+              top: "36%",
+              width: "70px",
+              height: "22px",
+              borderRadius: "40%",
+              transform: "rotate(25deg)",
+              background: "radial-gradient(ellipse at 30% 50%, rgba(130,135,140,0.12) 0%, rgba(130,135,140,0.06) 50%, transparent 85%)",
+            }}
+          />
+          {/* Secondary thermal paste dot */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "83%",
+              top: "40%",
+              width: "18px",
+              height: "14px",
+              borderRadius: "50%",
+              background: "radial-gradient(ellipse at center, rgba(130,135,140,0.10) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* Adhesive residue patch — where tape or a sticker was peeled off */}
+          <div
+            className="pointer-events-none absolute z-[5]"
+            style={{
+              left: "28%",
+              top: "20%",
+              width: "80px",
+              height: "55px",
+              borderRadius: "25%",
+              background: "radial-gradient(ellipse at center, rgba(190,170,120,0.08) 0%, rgba(190,170,120,0.04) 55%, transparent 80%)",
+            }}
+          />
+
+          {/* Scratch marks, scuffs, nicks, and debris */}
+          <svg className="pointer-events-none absolute inset-0 z-[5] h-full w-full" xmlns="http://www.w3.org/2000/svg">
+            {/* Longer drag scratches */}
+            <line x1="14%" y1="24%" x2="26%" y2="27.5%" stroke="rgba(0,0,0,0.08)" strokeWidth="0.8" />
+            <line x1="54%" y1="53%" x2="68%" y2="50%" stroke="rgba(0,0,0,0.07)" strokeWidth="0.7" />
+            <line x1="34%" y1="78%" x2="48%" y2="75%" stroke="rgba(0,0,0,0.08)" strokeWidth="0.7" />
+            <line x1="79%" y1="18%" x2="90%" y2="16.5%" stroke="rgba(0,0,0,0.06)" strokeWidth="0.6" />
+            <line x1="68%" y1="61%" x2="78%" y2="58%" stroke="rgba(0,0,0,0.06)" strokeWidth="0.7" />
+            <line x1="8%" y1="48%" x2="16%" y2="46%" stroke="rgba(0,0,0,0.06)" strokeWidth="0.6" />
+            {/* Small nicks / gouge marks (screwdriver slips, dropped components) */}
+            <circle cx="22%" cy="52%" r="1.8" fill="rgba(0,0,0,0.07)" />
+            <circle cx="65%" cy="30%" r="1.4" fill="rgba(0,0,0,0.06)" />
+            <circle cx="48%" cy="70%" r="2" fill="rgba(0,0,0,0.05)" />
+            <circle cx="88%" cy="55%" r="1.2" fill="rgba(0,0,0,0.05)" />
+            <circle cx="35%" cy="15%" r="1.5" fill="rgba(0,0,0,0.04)" />
+            <circle cx="12%" cy="75%" r="1.3" fill="rgba(0,0,0,0.05)" />
+            <circle cx="75%" cy="85%" r="1.6" fill="rgba(0,0,0,0.04)" />
+            {/* Dust / debris specks — scattered around, especially near edges */}
+            <circle cx="3%" cy="12%" r="0.8" fill="rgba(60,50,35,0.12)" />
+            <circle cx="95%" cy="8%" r="1" fill="rgba(60,50,35,0.10)" />
+            <circle cx="7%" cy="88%" r="0.7" fill="rgba(60,50,35,0.10)" />
+            <circle cx="92%" cy="85%" r="0.8" fill="rgba(60,50,35,0.08)" />
+            <circle cx="50%" cy="4%" r="0.6" fill="rgba(60,50,35,0.08)" />
+            <circle cx="15%" cy="95%" r="0.9" fill="rgba(60,50,35,0.10)" />
+            <circle cx="85%" cy="45%" r="0.6" fill="rgba(60,50,35,0.08)" />
+            <circle cx="60%" cy="92%" r="0.8" fill="rgba(60,50,35,0.10)" />
+            <circle cx="97%" cy="50%" r="0.7" fill="rgba(60,50,35,0.09)" />
+            <circle cx="2%" cy="40%" r="0.5" fill="rgba(60,50,35,0.08)" />
+            {/* Tiny metal shavings / solder splatter near center work area */}
+            <circle cx="45%" cy="58%" r="0.5" fill="rgba(80,80,80,0.10)" />
+            <circle cx="47%" cy="56%" r="0.4" fill="rgba(80,80,80,0.08)" />
+            <circle cx="43%" cy="60%" r="0.6" fill="rgba(80,80,80,0.07)" />
+            <circle cx="52%" cy="62%" r="0.4" fill="rgba(80,80,80,0.09)" />
+          </svg>
         </div>
 
         {/* Workbench tools — 16:10 container matching the editor coordinate system */}
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
-          <div className="relative h-full w-full" style={{ aspectRatio: "16/10", maxHeight: "100%", maxWidth: "100%" }}>
+          <div ref={toolsRef} className="relative h-full w-full" style={{ aspectRatio: "16/10", maxHeight: "100%", maxWidth: "100%" }}>
             {toolSlots.map((slot) => (
-              <WorkbenchTool key={slot.id} slot={slot} scrollY={scrollY} />
+              <WorkbenchTool key={slot.id} slot={slot} />
             ))}
           </div>
         </div>
@@ -249,12 +453,23 @@ export function Hero() {
                 height={620}
                 className="w-[720px] drop-shadow-lg"
               />
-              {/* Contact shadow — larger than the laptop so it peeks out around edges */}
+              {/* Contact shadow — warm-tinted, offset toward light direction */}
               <div
-                className="h-[40rem] w-[38rem] translate-y-[2.5rem]"
+                className="h-[40rem] w-[38rem]"
                 style={{
-                  filter: "blur(30px)",
-                  background: "radial-gradient(ellipse 100% 70% at 50% 55%, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 50%, transparent 75%)",
+                  filter: "blur(32px)",
+                  transform: "translate(6px, 12px)", // offset away from light (top-left)
+                  background: "radial-gradient(ellipse 100% 70% at 48% 54%, rgba(45,30,15,0.32) 0%, rgba(45,30,15,0.12) 50%, transparent 72%)",
+                }}
+              />
+              {/* Screen glow — cool blue wash on the mat surface in front of the screen */}
+              <div
+                className="pointer-events-none"
+                style={{
+                  width: "34rem",
+                  height: "20rem",
+                  transform: "translateY(6rem)",
+                  background: "radial-gradient(ellipse 80% 60% at 50% 15%, rgba(15,18,25,0.12) 0%, rgba(25,35,60,0.06) 30%, transparent 65%)",
                 }}
               />
               <MacbookStatic showGradient={false}>
@@ -279,6 +494,16 @@ export function Hero() {
                   </div>
                 </div>
               </MacbookStatic>
+              {/* Screen bloom — faint light spill beyond the bezel edges */}
+              <div
+                className="pointer-events-none"
+                style={{
+                  width: "36rem",
+                  height: "16rem",
+                  transform: "translateY(-18rem)",
+                  background: "radial-gradient(ellipse 90% 50% at 50% 80%, rgba(30,45,80,0.08) 0%, rgba(20,30,55,0.04) 40%, transparent 70%)",
+                }}
+              />
             </div>
           </div>
         </div>

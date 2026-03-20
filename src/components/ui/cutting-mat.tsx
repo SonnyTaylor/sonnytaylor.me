@@ -181,6 +181,42 @@ export function CuttingMat({
       {/* Circle templates */}
       {circles}
 
+      {/* ── Wear & tear ── */}
+      <g clipPath="url(#innerClip)">
+        {/* Cut / scoring lines — the signature look of a used mat */}
+        {/* Long horizontal cuts — deep scores, clearly visible */}
+        <line x1={innerX + 40} y1={innerY + 160} x2={innerX + 300} y2={innerY + 163} stroke="rgba(160,220,190,0.35)" strokeWidth={0.8} />
+        <line x1={innerX + 150} y1={innerY + 300} x2={innerX + 460} y2={innerY + 296} stroke="rgba(160,220,190,0.28)" strokeWidth={0.7} />
+        <line x1={innerX + 80} y1={innerY + 240} x2={innerX + 220} y2={innerY + 242} stroke="rgba(160,220,190,0.30)" strokeWidth={0.7} />
+        <line x1={innerX + 320} y1={innerY + 180} x2={innerX + 500} y2={innerY + 176} stroke="rgba(160,220,190,0.22)" strokeWidth={0.6} />
+        {/* Diagonal cuts — blade dragged at angles */}
+        <line x1={innerX + 180} y1={innerY + 80} x2={innerX + 330} y2={innerY + 210} stroke="rgba(160,220,190,0.32)" strokeWidth={0.8} />
+        <line x1={innerX + 340} y1={innerY + 130} x2={innerX + 470} y2={innerY + 300} stroke="rgba(160,220,190,0.25)" strokeWidth={0.7} />
+        <line x1={innerX + 60} y1={innerY + 320} x2={innerX + 200} y2={innerY + 420} stroke="rgba(160,220,190,0.28)" strokeWidth={0.7} />
+        <line x1={innerX + 400} y1={innerY + 60} x2={innerX + 500} y2={innerY + 180} stroke="rgba(160,220,190,0.20)" strokeWidth={0.6} />
+        {/* Short nicks — where blade poked through */}
+        <line x1={innerX + 290} y1={innerY + 220} x2={innerX + 310} y2={innerY + 224} stroke="rgba(160,220,190,0.40)" strokeWidth={1.0} />
+        <line x1={innerX + 140} y1={innerY + 390} x2={innerX + 155} y2={innerY + 386} stroke="rgba(160,220,190,0.38)" strokeWidth={0.9} />
+        <line x1={innerX + 410} y1={innerY + 90} x2={innerX + 425} y2={innerY + 94} stroke="rgba(160,220,190,0.35)" strokeWidth={0.8} />
+        <line x1={innerX + 240} y1={innerY + 45} x2={innerX + 250} y2={innerY + 42} stroke="rgba(160,220,190,0.32)" strokeWidth={0.8} />
+        <line x1={innerX + 480} y1={innerY + 350} x2={innerX + 492} y2={innerY + 346} stroke="rgba(160,220,190,0.30)" strokeWidth={0.7} />
+        {/* Cross-hatch area — where someone made multiple cuts in one spot */}
+        <line x1={innerX + 260} y1={innerY + 280} x2={innerX + 360} y2={innerY + 288} stroke="rgba(160,220,190,0.26)" strokeWidth={0.7} />
+        <line x1={innerX + 275} y1={innerY + 268} x2={innerX + 345} y2={innerY + 305} stroke="rgba(160,220,190,0.24)" strokeWidth={0.6} />
+        <line x1={innerX + 270} y1={innerY + 300} x2={innerX + 350} y2={innerY + 275} stroke="rgba(160,220,190,0.22)" strokeWidth={0.6} />
+        <line x1={innerX + 255} y1={innerY + 290} x2={innerX + 365} y2={innerY + 295} stroke="rgba(160,220,190,0.20)" strokeWidth={0.5} />
+
+        {/* Faded / worn patches — lighter areas from heavy use */}
+        <rect x={innerX + 100} y={innerY + 130} width={180} height={130} rx={25} fill="rgba(180,230,210,0.06)" />
+        <rect x={innerX + 280} y={innerY + 230} width={140} height={100} rx={20} fill="rgba(180,230,210,0.05)" />
+        <ellipse cx={innerX + 230} cy={innerY + 380} rx={100} ry={50} fill="rgba(180,230,210,0.045)" />
+
+        {/* Corner wear — bottom-left corner is most used, noticeably lighter */}
+        <rect x={innerX} y={innerY + innerH - 100} width={150} height={100} fill="rgba(180,230,210,0.07)" />
+        {/* Top-center wear — where ruler/straight-edge gets placed */}
+        <rect x={innerX + 100} y={innerY} width={350} height={30} fill="rgba(180,230,210,0.035)" />
+      </g>
+
     </svg>
   );
 }
