@@ -1063,37 +1063,77 @@ function NotebookPaper() {
 // ── Corkboard with draggable certificate cards ──
 
 const certifications = [
-  { name: "Google IT Support Professional Certificate", issuer: "Coursera", date: "2024" },
-  { name: "Operating Systems Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-  { name: "Computer Hardware Basics", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-  { name: "Introduction to Cybersecurity", issuer: "Cisco Networking Academy", date: "Oct 2023" },
-  { name: "Python for Beginners", issuer: "Grok Learning", date: "Sep 2023" },
+  { name: "Google IT Support Professional Certificate", issuer: "Google", platform: "Coursera", date: "2024", logo: "google" as const },
+  { name: "Operating Systems Basics", issuer: "Cisco", platform: "Cisco Networking Academy", date: "Oct 2023", logo: "cisco" as const },
+  { name: "Computer Hardware Basics", issuer: "Cisco", platform: "Cisco Networking Academy", date: "Oct 2023", logo: "cisco" as const },
+  { name: "Introduction to Cybersecurity", issuer: "Cisco", platform: "Cisco Networking Academy", date: "Oct 2023", logo: "cisco" as const },
+  { name: "Python for Beginners", issuer: "Grok Learning", platform: "Grok Learning", date: "Sep 2023", logo: "grok" as const },
 ];
 
 const CARD_POSITIONS = [
-  { x: 20,  y: 20,  rotation: -3,   pinColor: "#e53935" },
-  { x: 200, y: 30,  rotation: 2,    pinColor: "#1e88e5" },
-  { x: 390, y: 15,  rotation: -1.5, pinColor: "#43a047" },
-  { x: 70,  y: 165, rotation: 2.5,  pinColor: "#ffb300" },
-  { x: 300, y: 160, rotation: -2,   pinColor: "#8e24aa" },
+  { x: 35,  y: 35,  rotation: -2.5, pinColor: "#e53935" },
+  { x: 300, y: 22,  rotation: 1.8,  pinColor: "#1e88e5" },
+  { x: 575, y: 35,  rotation: -1.2, pinColor: "#43a047" },
+  { x: 90,  y: 250, rotation: 3,    pinColor: "#ffb300" },
+  { x: 400, y: 240, rotation: -2.5, pinColor: "#8e24aa" },
 ];
 
-function Pushpin({ color }: { color: string }) {
-  return (
-    <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -6 }}>
-      <svg width="16" height="20" viewBox="0 0 16 20">
-        {/* Shaft shadow */}
-        <line x1="8" y1="12" x2="8" y2="20" stroke="rgba(0,0,0,0.15)" strokeWidth="2" />
-        {/* Shaft */}
-        <line x1="8" y1="12" x2="8" y2="19" stroke="#999" strokeWidth="1.2" />
-        {/* Head shadow */}
-        <circle cx="8.5" cy="8" r="6" fill="rgba(0,0,0,0.12)" />
-        {/* Head body */}
-        <circle cx="8" cy="7.5" r="6" fill={color} />
-        {/* Gloss highlight */}
-        <ellipse cx="6" cy="5.5" rx="2.5" ry="2" fill="rgba(255,255,255,0.4)" />
+const ISSUER_ACCENT: Record<string, string> = {
+  google: "#4285F4",
+  cisco: "#049fd9",
+  grok: "#2d8659",
+};
+
+function IssuerLogo({ type }: { type: "google" | "cisco" | "grok" }) {
+  if (type === "google") {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24">
+        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
       </svg>
-    </div>
+    );
+  }
+  if (type === "cisco") {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24">
+        <rect x="3" y="9" width="2" height="7" rx="1" fill="#049fd9"/>
+        <rect x="7" y="6" width="2" height="13" rx="1" fill="#049fd9"/>
+        <rect x="11" y="4" width="2" height="17" rx="1" fill="#049fd9"/>
+        <rect x="15" y="6" width="2" height="13" rx="1" fill="#049fd9"/>
+        <rect x="19" y="9" width="2" height="7" rx="1" fill="#049fd9"/>
+      </svg>
+    );
+  }
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2d8659" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="8 17 3 12 8 7"/>
+      <polyline points="16 7 21 12 16 17"/>
+    </svg>
+  );
+}
+
+function Pushpin({ color }: { color: string }) {
+  // Darker shade for rim/underside
+  return (
+    <svg width="28" height="28" viewBox="0 0 28 28" className="filter drop-shadow-[0_2px_3px_rgba(0,0,0,0.2)]">
+      {/* Shadow cast on surface */}
+      <ellipse cx="15" cy="17" rx="11" ry="7" fill="rgba(0,0,0,0.10)" />
+      {/* Rim / underside — slightly darker ring */}
+      <circle cx="14" cy="13" r="10" fill="rgba(0,0,0,0.12)" />
+      {/* Head body — flat thumbtack dome */}
+      <circle cx="14" cy="12.5" r="9.5" fill={color} />
+      {/* Dome shading — subtle radial for 3D curvature */}
+      <circle cx="14" cy="12.5" r="9.5" fill="url(#none)" opacity="0" />
+      <ellipse cx="14" cy="16" rx="9" ry="5" fill="rgba(0,0,0,0.08)" />
+      {/* Gloss highlight — top-left for overhead light */}
+      <ellipse cx="10.5" cy="9" rx="4.5" ry="3.2" fill="rgba(255,255,255,0.3)" />
+      {/* Specular highlight */}
+      <circle cx="9.5" cy="8" r="1.5" fill="rgba(255,255,255,0.45)" />
+      {/* Edge ring for definition */}
+      <circle cx="14" cy="12.5" r="9" fill="none" stroke="rgba(0,0,0,0.1)" strokeWidth="0.5" />
+    </svg>
   );
 }
 
@@ -1101,14 +1141,115 @@ function CertCard({
   cert,
   position,
   constraintsRef,
-  isDragging,
+  zIndex,
   onDragStart,
   onDragEnd,
 }: {
-  cert: { name: string; issuer: string; date: string };
+  cert: (typeof certifications)[number];
   position: (typeof CARD_POSITIONS)[number];
   constraintsRef: React.RefObject<HTMLDivElement | null>;
-  isDragging: boolean;
+  zIndex: number;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+}) {
+  const accent = ISSUER_ACCENT[cert.logo];
+  return (
+    <motion.div
+      drag
+      dragConstraints={constraintsRef}
+      dragMomentum={false}
+      dragElastic={0.08}
+      whileDrag={{ scale: 1.06 }}
+      whileHover={{ scale: 1.02 }}
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      className="absolute cursor-grab select-none active:cursor-grabbing"
+      style={{
+        left: position.x,
+        top: position.y,
+        width: 200,
+        rotate: position.rotation,
+        zIndex,
+        filter: zIndex > 15
+          ? "drop-shadow(3px 6px 12px rgba(0,0,0,0.25))"
+          : "drop-shadow(1px 2px 5px rgba(0,0,0,0.2))",
+        transition: "filter 0.2s",
+      }}
+    >
+      {/* Pushpin — positioned above the card, not clipped */}
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -4, zIndex: 2 }}>
+        <Pushpin color={position.pinColor} />
+      </div>
+
+      {/* Card paper */}
+      <div
+        className="relative overflow-hidden rounded-sm"
+        style={{
+          marginTop: 12,
+          background: "linear-gradient(168deg, #fffef7 0%, #faf6eb 60%, #f5f0e0 100%)",
+          boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.08)",
+        }}
+      >
+        {/* Paper texture */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E")`,
+            backgroundSize: "150px 150px",
+          }}
+        />
+
+        {/* Aged edges */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{ boxShadow: "inset 0 0 8px rgba(120,100,60,0.08)" }}
+        />
+
+        {/* Pin hole — where the pin punctures the paper */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{
+            top: 3,
+            width: 5,
+            height: 5,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(80,60,30,0.35) 0%, rgba(80,60,30,0.1) 60%, transparent 100%)",
+          }}
+        />
+
+        <div className="px-3.5 pb-3 pt-5">
+          {/* Logo + issuer row */}
+          <div className="relative mb-2 flex items-center gap-1.5">
+            <IssuerLogo type={cert.logo} />
+            <span className="font-mono text-[9px] font-medium" style={{ color: accent }}>{cert.issuer}</span>
+          </div>
+
+          {/* Certificate name */}
+          <p className="relative font-mono text-[11px] font-semibold leading-snug" style={{ color: "#1a1815" }}>
+            {cert.name}
+          </p>
+
+          {/* Platform + date */}
+          <p className="relative mt-2 font-mono text-[9px]" style={{ color: "#8a857e" }}>
+            {cert.platform} · {cert.date}
+          </p>
+        </div>
+
+        {/* Colored accent stripe at bottom */}
+        <div style={{ height: 3, background: accent, opacity: 0.6 }} />
+      </div>
+    </motion.div>
+  );
+}
+
+function ThermalReceipt({
+  constraintsRef,
+  zIndex,
+  onDragStart,
+  onDragEnd,
+}: {
+  constraintsRef: React.RefObject<HTMLDivElement | null>;
+  zIndex: number;
   onDragStart: () => void;
   onDragEnd: () => void;
 }) {
@@ -1117,54 +1258,130 @@ function CertCard({
       drag
       dragConstraints={constraintsRef}
       dragMomentum={false}
-      dragElastic={0.1}
-      whileDrag={{ scale: 1.08 }}
+      dragElastic={0.08}
+      whileDrag={{ scale: 1.06 }}
+      whileHover={{ scale: 1.02 }}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className="absolute cursor-grab select-none active:cursor-grabbing"
       style={{
-        left: position.x,
-        top: position.y,
-        width: 170,
-        rotate: position.rotation,
-        zIndex: isDragging ? 50 : 10,
-        filter: isDragging
-          ? "drop-shadow(4px 8px 16px rgba(0,0,0,0.3))"
-          : "drop-shadow(1px 2px 4px rgba(0,0,0,0.18))",
-        transition: isDragging ? "filter 0.15s" : "filter 0.3s, z-index 0s 0.3s",
+        left: 670,
+        top: 140,
+        width: 130,
+        rotate: 3.5,
+        zIndex,
+        filter: "drop-shadow(1px 2px 4px rgba(0,0,0,0.15))",
+        transition: "filter 0.2s",
       }}
     >
-      {/* Card paper */}
+      {/* Pushpin for the receipt */}
+      <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -4, zIndex: 2 }}>
+        <Pushpin color="#e57373" />
+      </div>
+
+      {/* Receipt paper */}
       <div
-        className="relative rounded-sm px-3 pb-3 pt-6"
+        className="relative"
         style={{
-          background: "linear-gradient(170deg, #fffef7 0%, #faf6eb 100%)",
-          boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.06)",
+          marginTop: 12,
+          background: "#fafaf6",
+          padding: "6px 8px 10px",
         }}
       >
-        {/* Paper texture */}
+        {/* Thermal paper texture — slightly faded/noisy */}
         <div
-          className="pointer-events-none absolute inset-0 rounded-sm"
+          className="pointer-events-none absolute inset-0"
           style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")`,
-            backgroundSize: "120px 120px",
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='r'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.2' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23r)' opacity='0.03'/%3E%3C/svg%3E")`,
+            backgroundSize: "100px 100px",
           }}
         />
-        <Pushpin color={position.pinColor} />
-        <p className="relative font-mono text-[10px] font-semibold leading-snug" style={{ color: "#1a1815" }}>
-          {cert.name}
-        </p>
-        <p className="relative mt-1.5 font-mono text-[9px]" style={{ color: "#7a756e" }}>
-          {cert.issuer} · {cert.date}
-        </p>
+
+        {/* Faded edges — thermal paper aging */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            boxShadow: "inset 0 0 12px rgba(180,170,140,0.15)",
+          }}
+        />
+
+        {/* Receipt content */}
+        <div className="relative font-mono" style={{ color: "#2a2a2a" }}>
+          {/* Header */}
+          <div className="text-center">
+            <p className="text-[8px] font-bold tracking-wide">WOOLWORTHS</p>
+            <p className="text-[6px]" style={{ color: "#666" }}>HIGHETT</p>
+            <p className="text-[5.5px]" style={{ color: "#888" }}>ABN 88 000 014 675</p>
+          </div>
+
+          {/* Divider */}
+          <div className="my-1.5" style={{ borderTop: "1px dashed #ccc" }} />
+
+          {/* Items */}
+          <div className="space-y-0.5 text-[7px]">
+            <div className="flex justify-between">
+              <span>MONSTER ULTRA S/D</span>
+            </div>
+            <div className="flex justify-between">
+              <span>&nbsp;&nbsp;4 PACK</span>
+              <span>$11.00</span>
+            </div>
+            <div className="flex justify-between">
+              <span>WOOLWORTHS ROAST</span>
+            </div>
+            <div className="flex justify-between">
+              <span>&nbsp;&nbsp;CHICKEN WHOLE</span>
+              <span>$12.00</span>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="my-1.5" style={{ borderTop: "1px dashed #ccc" }} />
+
+          {/* Total */}
+          <div className="space-y-0.5 text-[7px]">
+            <div className="flex justify-between font-bold">
+              <span>TOTAL</span>
+              <span>$23.00</span>
+            </div>
+            <div className="flex justify-between">
+              <span>CARD</span>
+              <span>****4127</span>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="mt-1.5 text-center">
+            <p className="text-[6px]" style={{ color: "#888" }}>18/03/2026 &nbsp; 17:42</p>
+            <p className="mt-0.5 text-[5.5px]" style={{ color: "#aaa" }}>THANK YOU</p>
+          </div>
+        </div>
       </div>
+
+      {/* Torn bottom edge */}
+      <svg width="130" height="6" viewBox="0 0 130 6" className="block" style={{ marginTop: -1 }}>
+        <path
+          d="M0 0 L4 3 L8 1 L13 4 L17 0 L22 3 L26 1 L31 4 L35 1 L40 3 L44 0 L49 4 L53 1 L58 3 L62 0 L67 4 L71 1 L76 3 L80 0 L85 3 L89 1 L94 4 L98 0 L103 3 L107 1 L112 4 L116 1 L121 3 L125 0 L130 2 L130 0 L0 0 Z"
+          fill="#fafaf6"
+        />
+      </svg>
     </motion.div>
   );
 }
 
 function Corkboard() {
   const constraintsRef = useRef<HTMLDivElement>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const totalItems = certifications.length + 1; // +1 receipt
+  const [zOrders, setZOrders] = useState<number[]>(Array(totalItems).fill(10));
+  const zCounter = useRef(11);
+
+  const bringToFront = (index: number) => {
+    setZOrders(prev => {
+      const next = [...prev];
+      next[index] = zCounter.current++;
+      return next;
+    });
+  };
 
   return (
     <motion.div
@@ -1173,18 +1390,17 @@ function Corkboard() {
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.6 }}
       ref={constraintsRef}
-      className="relative mx-auto overflow-hidden"
+      className="relative z-0 mx-auto overflow-hidden"
       style={{
-        width: 620,
-        height: 310,
+        width: 850,
+        height: 450,
         borderRadius: 4,
-        // Wood frame — layered inset shadows for bevel
         boxShadow: `
-          inset 0 0 0 6px #a07830,
-          inset 0 0 0 8px #7a5a20,
-          inset 0 0 0 9px rgba(0,0,0,0.25),
-          2px 4px 12px rgba(0,0,0,0.2),
-          4px 8px 24px rgba(0,0,0,0.1)
+          inset 0 0 0 8px #a07830,
+          inset 0 0 0 10px #7a5a20,
+          inset 0 0 0 11px rgba(0,0,0,0.3),
+          3px 6px 16px rgba(0,0,0,0.22),
+          6px 12px 32px rgba(0,0,0,0.12)
         `,
       }}
     >
@@ -1195,8 +1411,17 @@ function Corkboard() {
       <div
         className="absolute inset-0"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='0.12'/%3E%3C/svg%3E")`,
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='0.14'/%3E%3C/svg%3E")`,
           backgroundSize: "200px 200px",
+        }}
+      />
+
+      {/* Secondary grain layer for depth */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 128 128' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='turbulence' baseFrequency='0.4' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)' opacity='0.06'/%3E%3C/svg%3E")`,
+          backgroundSize: "160px 160px",
         }}
       />
 
@@ -1205,9 +1430,10 @@ function Corkboard() {
         className="absolute inset-0"
         style={{
           background: `
-            radial-gradient(ellipse at 20% 30%, rgba(180,120,60,0.25) 0%, transparent 50%),
-            radial-gradient(ellipse at 75% 55%, rgba(160,100,50,0.18) 0%, transparent 45%),
-            radial-gradient(ellipse at 45% 80%, rgba(190,130,70,0.12) 0%, transparent 40%)
+            radial-gradient(ellipse at 15% 25%, rgba(180,120,60,0.22) 0%, transparent 50%),
+            radial-gradient(ellipse at 70% 50%, rgba(160,100,50,0.16) 0%, transparent 45%),
+            radial-gradient(ellipse at 40% 75%, rgba(190,130,70,0.14) 0%, transparent 40%),
+            radial-gradient(ellipse at 85% 20%, rgba(170,110,55,0.10) 0%, transparent 35%)
           `,
         }}
       />
@@ -1217,7 +1443,7 @@ function Corkboard() {
         className="absolute inset-0"
         style={{
           backgroundImage: `
-            radial-gradient(circle, rgba(0,0,0,0.07) 1px, transparent 1px),
+            radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px),
             radial-gradient(circle, rgba(0,0,0,0.04) 0.8px, transparent 0.8px)
           `,
           backgroundSize: "7px 7px, 11px 11px",
@@ -1225,13 +1451,55 @@ function Corkboard() {
         }}
       />
 
+      {/* Coffee ring stain */}
+      <div
+        className="pointer-events-none absolute"
+        style={{
+          right: 45,
+          top: 70,
+          width: 85,
+          height: 80,
+          borderRadius: "50%",
+          background: "radial-gradient(ellipse, transparent 32%, rgba(101,67,33,0.07) 42%, rgba(101,67,33,0.10) 48%, rgba(101,67,33,0.04) 55%, transparent 62%)",
+          transform: "rotate(-12deg)",
+        }}
+      />
+
+      {/* Old pin holes — small marks left on cork from previous use */}
+      {[
+        { x: 180, y: 55 },
+        { x: 450, y: 150 },
+        { x: 620, y: 90 },
+        { x: 350, y: 340 },
+        { x: 140, y: 180 },
+      ].map((pos, i) => (
+        <div
+          key={i}
+          className="pointer-events-none absolute"
+          style={{
+            left: pos.x,
+            top: pos.y,
+            width: 3,
+            height: 3,
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(60,40,20,0.25) 0%, transparent 70%)",
+          }}
+        />
+      ))}
+
       {/* Inner frame shadow — depth around edges */}
       <div
-        className="pointer-events-none absolute inset-[9px]"
+        className="pointer-events-none absolute inset-[11px]"
         style={{
-          boxShadow: "inset 2px 2px 6px rgba(0,0,0,0.12), inset -1px -1px 4px rgba(0,0,0,0.06)",
+          boxShadow: "inset 3px 3px 8px rgba(0,0,0,0.12), inset -2px -2px 6px rgba(0,0,0,0.06)",
           borderRadius: 2,
         }}
+      />
+
+      {/* Edge vignette */}
+      <div
+        className="pointer-events-none absolute inset-[11px]"
+        style={{ background: "radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.06) 100%)" }}
       />
 
       {/* Certificate cards */}
@@ -1241,11 +1509,19 @@ function Corkboard() {
           cert={cert}
           position={CARD_POSITIONS[i]}
           constraintsRef={constraintsRef}
-          isDragging={draggedIndex === i}
-          onDragStart={() => setDraggedIndex(i)}
-          onDragEnd={() => setDraggedIndex(null)}
+          zIndex={zOrders[i]}
+          onDragStart={() => bringToFront(i)}
+          onDragEnd={() => {}}
         />
       ))}
+
+      {/* Woolworths receipt */}
+      <ThermalReceipt
+        constraintsRef={constraintsRef}
+        zIndex={zOrders[certifications.length]}
+        onDragStart={() => bringToFront(certifications.length)}
+        onDragEnd={() => {}}
+      />
     </motion.div>
   );
 }
@@ -1379,7 +1655,7 @@ export function ExperienceTab() {
           {certifications.map((cert, i) => (
             <motion.div key={cert.name} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, margin: "-50px" }} transition={{ delay: 0.05 + i * 0.05, duration: 0.4 }} className="space-y-1">
               <p className="font-mono text-sm text-foreground">{cert.name}</p>
-              <p className="font-mono text-[11px] text-muted-foreground">{cert.issuer} · {cert.date}</p>
+              <p className="font-mono text-[11px] text-muted-foreground">{cert.platform} · {cert.date}</p>
             </motion.div>
           ))}
         </div>
