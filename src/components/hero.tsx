@@ -34,15 +34,6 @@ const toolSlots: ToolItem[] = [
   { id: "monster", label: "Monster Energy", img: "/tools/monster.webp", x: 63.8, y: 43.8, width: 18.2, rotation: 8, shadow: 100, skewX: 0, skewY: 0, elevation: 0.7, parallaxSpeed: 0.04 },
 ];
 
-/** Distance from viewport center (0–1), used for DOF blur */
-function distFromCenter(x: number, y: number, w: number): number {
-  const cx = x + w / 2;
-  const cy = y + (w * 0.6) / 2; // approximate center of item
-  const dx = (cx - 50) / 50;
-  const dy = (cy - 50) / 50;
-  return Math.min(1, Math.sqrt(dx * dx + dy * dy));
-}
-
 // ── Directional light source — simulates an overhead desk lamp ──
 const LIGHT = { x: 22, y: -8 }; // top-left, slightly above the scene
 
@@ -67,23 +58,14 @@ function buildDirectionalShadow(
   // Warm brown tint
   const warm = "45,30,10";
 
-  // Contact shadow — tight, grounds the object to the surface
-  const cOffX = rawDx * (0.4 + h * 0.8);
-  const cOffY = rawDy * (0.4 + h * 0.8) + 1;
-  const cBlur  = 2 + h * 4;
-  const cAlpha = amt * 0.5 * Math.max(0.35, 1 - h * 0.3);
+  // Single combined shadow — blends contact + cast for perf (1 filter op instead of 2)
+  const mul = 0.8 + h * 2;
+  const offX = rawDx * mul;
+  const offY = rawDy * mul + 1.5;
+  const blur = 4 + h * 12;
+  const alpha = amt * 0.35 * Math.max(0.4, 1 - h * 0.2);
 
-  // Cast shadow — softer, offset in light direction
-  const castMul = 1.2 + h * 3;
-  const sOffX = rawDx * castMul;
-  const sOffY = rawDy * castMul + 2;
-  const sBlur  = 8 + h * 18;
-  const sAlpha = amt * 0.2;
-
-  return [
-    `drop-shadow(${cOffX.toFixed(1)}px ${cOffY.toFixed(1)}px ${cBlur.toFixed(1)}px rgba(${warm},${cAlpha.toFixed(2)}))`,
-    `drop-shadow(${sOffX.toFixed(1)}px ${sOffY.toFixed(1)}px ${sBlur.toFixed(1)}px rgba(${warm},${sAlpha.toFixed(2)}))`,
-  ].join(" ");
+  return `drop-shadow(${offX.toFixed(1)}px ${offY.toFixed(1)}px ${blur.toFixed(1)}px rgba(${warm},${alpha.toFixed(2)}))`;
 }
 
 function TerminalCard() {
@@ -112,29 +94,24 @@ function TerminalCard() {
   );
 }
 
-/** Pre-compute the static filter string for each tool (shadow + DOF).
- *  This never changes, so the browser can cache the composited layer. */
-function useStaticFilter(slot: ToolItem): string {
+/** Pre-compute shadow filter strings at module level (static data). */
+const toolFilters = toolSlots.map((slot) => {
   const elevation = slot.elevation ?? 0.2;
-  const dist = distFromCenter(slot.x, slot.y, slot.width);
-  const dofBlur = dist > 0.6 ? (dist - 0.6) * 0.8 : 0;
-  const shadow = buildDirectionalShadow(slot.x, slot.y, slot.width, elevation, slot.shadow);
-  return [shadow, dofBlur > 0 ? `blur(${dofBlur.toFixed(1)}px)` : ""].filter(Boolean).join(" ");
-}
+  return buildDirectionalShadow(slot.x, slot.y, slot.width, elevation, slot.shadow);
+});
 
-function WorkbenchTool({ slot }: { slot: ToolItem }) {
-  // Filter is static — only transform changes on scroll (via direct DOM update in Hero)
-  const filter = useStaticFilter(slot);
-
+function WorkbenchTool({ slot, index }: { slot: ToolItem; index: number }) {
   return (
     <div
-      className="absolute will-change-transform"
+      className="absolute"
       style={{
         left: `${slot.x}%`,
         top: `${slot.y}%`,
         width: `${slot.width}%`,
         transform: `rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`,
-        filter,
+        translate: "0 0",
+        willChange: "translate",
+        filter: toolFilters[index],
       }}
     >
       <img
@@ -153,28 +130,54 @@ export function Hero() {
 
   useEffect(() => {
     let rafId = 0;
-    const update = () => {
-      if (!sectionRef.current || !toolsRef.current) return;
-      const rect = sectionRef.current.getBoundingClientRect();
-      if (rect.bottom <= 0) return;
-      const scrollY = -rect.top;
-      // Update each tool's transform directly — no React re-render
-      const children = toolsRef.current.children;
-      for (let i = 0; i < toolSlots.length && i < children.length; i++) {
-        const el = children[i] as HTMLElement;
-        const slot = toolSlots[i];
-        const parallax = slot.parallaxSpeed ?? 0.04;
-        const yOffset = scrollY * parallax;
-        el.style.transform = `translate3d(0, ${yOffset}px, 0) rotate(${slot.rotation}deg) skewX(${slot.skewX}deg) skewY(${slot.skewY}deg)`;
+    let sectionTop = 0;
+    let sectionHeight = 0;
+
+    const cachePosition = () => {
+      if (sectionRef.current) {
+        sectionTop = sectionRef.current.offsetTop;
+        sectionHeight = sectionRef.current.offsetHeight;
       }
     };
+    cachePosition();
+
+    // Force early rasterization — nudge translate so the browser composites
+    // all layers immediately (during load) rather than on first scroll.
+    if (toolsRef.current) {
+      const ch = toolsRef.current.children;
+      for (let i = 0; i < ch.length; i++)
+        (ch[i] as HTMLElement).style.translate = "0 0.1px";
+      requestAnimationFrame(() => {
+        if (!toolsRef.current) return;
+        const ch2 = toolsRef.current.children;
+        for (let i = 0; i < ch2.length; i++)
+          (ch2[i] as HTMLElement).style.translate = "0 0";
+      });
+    }
+
+    // Pre-compute parallax speeds so the hot loop does zero object lookups
+    const speeds = toolSlots.map((s) => s.parallaxSpeed ?? 0.04);
+
+    const update = () => {
+      if (!toolsRef.current) return;
+      const sy = window.scrollY;
+      if (sy > sectionTop + sectionHeight) return; // past the section
+      const scrollY = sy - sectionTop;
+      const children = toolsRef.current.children;
+      for (let i = 0; i < speeds.length && i < children.length; i++) {
+        (children[i] as HTMLElement).style.translate = `0 ${scrollY * speeds[i]}px`;
+      }
+    };
+
     const handleScroll = () => {
       cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(update);
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("resize", cachePosition);
     return () => {
       window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", cachePosition);
       cancelAnimationFrame(rafId);
     };
   }, []);
@@ -231,7 +234,7 @@ export function Hero() {
       {/* ===== DESKTOP LAYOUT (>= md) ===== */}
       <div className="relative hidden h-full w-full md:flex md:flex-col md:items-center md:justify-center">
         {/* Workbench surface background */}
-        <div className="absolute inset-0 bg-[#f5f5f0]">
+        <div className="absolute inset-0 bg-[#f5f5f0]" style={{ contain: "strict" }}>
           {/* Subtle grid */}
           <div
             className="absolute inset-0 opacity-[0.06]"
@@ -243,39 +246,26 @@ export function Hero() {
               backgroundSize: "40px 40px",
             }}
           />
-          {/* Paper grain / noise texture */}
-          <svg className="absolute inset-0 h-full w-full opacity-[0.4]" xmlns="http://www.w3.org/2000/svg">
-            <filter id="noise">
-              <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-              <feColorMatrix type="saturate" values="0" />
-            </filter>
-            <rect width="100%" height="100%" filter="url(#noise)" />
-          </svg>
-          {/* Desk lamp warm light pool — brighter near the light source */}
+          {/* Paper grain / noise texture — pre-rasterised PNG, zero runtime cost */}
           <div
-            className="absolute inset-0"
-            style={{
-              background: `radial-gradient(ellipse 75% 70% at 20% 10%, rgba(255,240,215,0.30) 0%, rgba(255,235,200,0.12) 35%, transparent 60%)`,
-            }}
+            className="absolute inset-0 opacity-[0.4]"
+            style={{ backgroundImage: "url(/noise.png)", backgroundRepeat: "repeat" }}
           />
-          {/* Secondary fill light — very subtle from bottom-right */}
+          {/* Lighting & vignette — combined into one element to reduce compositor layers */}
           <div
             className="absolute inset-0"
             style={{
-              background: `radial-gradient(ellipse 40% 35% at 85% 90%, rgba(200,210,225,0.06) 0%, transparent 50%)`,
+              background: [
+                "radial-gradient(ellipse 75% 70% at 20% 10%, rgba(255,240,215,0.30) 0%, rgba(255,235,200,0.12) 35%, transparent 60%)",
+                "radial-gradient(ellipse 40% 35% at 85% 90%, rgba(200,210,225,0.06) 0%, transparent 50%)",
+                "radial-gradient(ellipse 80% 75% at 30% 35%, transparent 25%, rgba(0,0,0,0.06) 55%, rgba(0,0,0,0.14) 85%, rgba(0,0,0,0.20) 100%)",
+              ].join(", "),
             }}
           />
           {/* Warm edge highlight along the top — light hitting desk edge */}
           <div
             className="absolute inset-x-0 top-0 h-[2px]"
             style={{ background: "linear-gradient(90deg, transparent 3%, rgba(255,235,200,0.35) 20%, rgba(255,240,210,0.15) 55%, transparent 80%)" }}
-          />
-          {/* Vignette — strongly asymmetric (darker far from lamp) */}
-          <div
-            className="absolute inset-0"
-            style={{
-              background: `radial-gradient(ellipse 80% 75% at 30% 35%, transparent 25%, rgba(0,0,0,0.06) 55%, rgba(0,0,0,0.14) 85%, rgba(0,0,0,0.20) 100%)`,
-            }}
           />
           {/* ── Surface imperfections ── */}
 
@@ -421,8 +411,8 @@ export function Hero() {
         {/* Workbench tools — 16:10 container matching the editor coordinate system */}
         <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center overflow-hidden">
           <div ref={toolsRef} className="relative h-full w-full" style={{ aspectRatio: "16/10", maxHeight: "100%", maxWidth: "100%" }}>
-            {toolSlots.map((slot) => (
-              <WorkbenchTool key={slot.id} slot={slot} />
+            {toolSlots.map((slot, idx) => (
+              <WorkbenchTool key={slot.id} slot={slot} index={idx} />
             ))}
           </div>
         </div>
@@ -451,15 +441,15 @@ export function Hero() {
               <CuttingMat
                 width={720}
                 height={620}
-                className="w-[720px] drop-shadow-lg"
+                className="w-[720px]"
               />
-              {/* Contact shadow — warm-tinted, offset toward light direction */}
+              {/* Contact shadow — warm-tinted, offset toward light direction.
+                  Uses a naturally diffuse gradient instead of blur() filter for perf. */}
               <div
                 className="h-[40rem] w-[38rem]"
                 style={{
-                  filter: "blur(32px)",
-                  transform: "translate(6px, 12px)", // offset away from light (top-left)
-                  background: "radial-gradient(ellipse 100% 70% at 48% 54%, rgba(45,30,15,0.32) 0%, rgba(45,30,15,0.12) 50%, transparent 72%)",
+                  transform: "translate(6px, 12px)",
+                  background: "radial-gradient(ellipse 115% 85% at 48% 54%, rgba(45,30,15,0.28) 0%, rgba(45,30,15,0.18) 25%, rgba(45,30,15,0.08) 50%, rgba(45,30,15,0.02) 65%, transparent 78%)",
                 }}
               />
               {/* Screen glow — cool blue wash on the mat surface in front of the screen */}

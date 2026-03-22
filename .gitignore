@@ -49,3 +49,5 @@ workbench-layout.json
 
 # package-lock (using bun)
 package-lock.json
+
+.vercel
