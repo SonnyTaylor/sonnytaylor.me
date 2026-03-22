@@ -230,7 +230,7 @@ export function TechbayCard() {
         {/* Right: Content */}
         <div className="relative flex flex-col justify-center p-6 md:p-8">
           <div className="mb-1 flex items-center gap-3">
-            <h3 className="font-display text-4xl text-foreground">Techbay</h3>
+            <h3 className="font-display text-4xl text-foreground">Techbay Website</h3>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-[#ce5d5b]/20 bg-[#ce5d5b]/10 px-2 py-0.5 font-mono text-[8px] font-semibold text-[#ce5d5b]">
               <ShoppingCart className="h-2.5 w-2.5" />
               E-COMMERCE
