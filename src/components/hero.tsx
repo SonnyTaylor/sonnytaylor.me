@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { MacbookStatic } from "@/components/ui/macbook-scroll";
 import { CuttingMat } from "@/components/ui/cutting-mat";
 import { TerminalContent } from "@/components/terminal-content";
@@ -114,9 +115,12 @@ function WorkbenchTool({ slot, index }: { slot: ToolItem; index: number }) {
         filter: toolFilters[index],
       }}
     >
-      <img
+      <Image
         src={slot.img}
         alt={slot.label}
+        width={800}
+        height={800}
+        sizes={`${Math.round(slot.width)}vw`}
         className="h-full w-full object-contain"
         draggable={false}
       />
